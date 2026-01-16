@@ -24,7 +24,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     docker rmi ml-benchmark/bentoml-mobilenet:latest 2>/dev/null || true
     docker rmi ml-benchmark/fastapi-mobilenet:latest 2>/dev/null || true
     docker rmi ml-benchmark/rayserve-mobilenet:latest 2>/dev/null || true
-    docker rmi ml-benchmark/loadtest:latest 2>/dev/null || true
+    docker rmi ml-benchmark/locust-service:latest 2>/dev/null || true
 fi
 
 # Remove virtual environment (optional)

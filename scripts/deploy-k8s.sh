@@ -26,7 +26,7 @@ echo "Loading Docker images into Kind cluster..."
 kind load docker-image ml-benchmark/bentoml-mobilenet:latest --name ml-benchmark
 kind load docker-image ml-benchmark/fastapi-mobilenet:latest --name ml-benchmark
 kind load docker-image ml-benchmark/rayserve-mobilenet:latest --name ml-benchmark
-kind load docker-image ml-benchmark/loadtest:latest --name ml-benchmark
+kind load docker-image ml-benchmark/locust-service:latest --name ml-benchmark
 
 # Apply Kubernetes manifests
 echo ""
@@ -35,7 +35,7 @@ kubectl apply -f kubernetes/namespace.yaml
 kubectl apply -f kubernetes/bentoml-deployment.yaml
 kubectl apply -f kubernetes/fastapi-deployment.yaml
 kubectl apply -f kubernetes/rayserve-deployment.yaml
-kubectl apply -f kubernetes/loadtest-deployment.yaml
+kubectl apply -f kubernetes/locust-service-deployment.yaml
 
 # Wait for deployments
 echo ""

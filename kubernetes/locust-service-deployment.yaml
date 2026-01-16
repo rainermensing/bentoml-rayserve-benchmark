@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: locust
-          image: ml-benchmark/loadtest:latest
+          image: ml-benchmark/locust-service:latest
           imagePullPolicy: Never  # Use local image
           ports:
             - containerPort: 8089

@@ -27,7 +27,7 @@ kind create cluster --name ml-benchmark
 kind load docker-image ml-benchmark/bentoml-mobilenet:latest --name ml-benchmark
 kind load docker-image ml-benchmark/fastapi-mobilenet:latest --name ml-benchmark
 kind load docker-image ml-benchmark/rayserve-mobilenet:latest --name ml-benchmark
-kind load docker-image ml-benchmark/loadtest:latest --name ml-benchmark
+kind load docker-image ml-benchmark/locust-service:latest --name ml-benchmark
 ```
 
 ## Step 2: Download the Model

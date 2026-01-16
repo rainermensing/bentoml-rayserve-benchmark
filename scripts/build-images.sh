@@ -88,7 +88,7 @@ if [ -f "rayserve/app.py" ]; then
 fi
 build_if_exists "rayserve-mobilenet" "rayserve/Dockerfile" "."
 
-# Loadtest image
-build_if_exists "loadtest" "loadtest/Dockerfile" "."
+# Locust service image
+build_if_exists "locust-service" "locust_service/Dockerfile" "."
 
 echo "Docker image build step complete"

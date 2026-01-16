@@ -90,7 +90,7 @@ The most important metric for model serving performance.
 Use the included Python script to generate comparison charts:
 
 ```bash
-cd loadtest/results
+cd locust_service/results
 python ../analyze_results.py
 ```
 

@@ -38,15 +38,15 @@ Both services use **MobileNetV2** (pre-trained on ImageNet) for image classifica
 │   ├── bentoml-deployment.yaml  # BentoML deployment + service
 │   ├── fastapi-deployment.yaml  # FastAPI deployment + service
 │   ├── rayserve-deployment.yaml # Ray Serve deployment + service
-│   └── loadtest-deployment.yaml # Locust deployment + service
-├── loadtest/
+│   └── locust-service-deployment.yaml # Locust deployment + service
+├── locust_service/
 │   ├── locustfile.py            # Locust load test definition
 │   ├── k6-script.js             # k6 load test script (alternative)
-│   ├── Dockerfile               # Loadtest container build
+│   ├── Dockerfile               # Locust service container build
 │   └── analyze_results.py       # Results analysis script
 ├── scripts/
 │   ├── setup.sh                 # Complete setup script
-│   ├── build-images.sh          # Build Docker images (BentoML, FastAPI, Ray Serve, loadtest)
+│   ├── build-images.sh          # Build Docker images (BentoML, FastAPI, Ray Serve, locust-service)
 │   ├── deploy-k8s.sh            # Deploy to Kubernetes / Kind
 │   ├── automated-loadtest.sh    # CLI load test (curl-based) + Markdown report
 │   ├── test-containers.sh       # Run smoke tests on local Docker containers
@@ -140,7 +140,7 @@ curl http://localhost:3000/health
 - Outputs raw results to `tmp/loadtest_*.txt` and a Markdown summary to `tmp/loadtest_report.md`
 - Override via env: `DURATION_PER_LEVEL=5 CONCURRENCY_LEVELS="1 5 10" ./scripts/automated-loadtest.sh`
 
-Locust UI remains available at http://localhost:8089 if you prefer browser-driven tests (see loadtest/locustfile.py).
+Locust UI remains available at http://localhost:8089 if you prefer browser-driven tests (see locust_service/locustfile.py).
 
 ## Metrics Collected
 
