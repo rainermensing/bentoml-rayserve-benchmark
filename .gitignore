@@ -220,3 +220,4 @@ __marimo__/
 model/imagenet_labels.txt
 model/mobilenet_v2.keras
 .DS_Store
+tmp/

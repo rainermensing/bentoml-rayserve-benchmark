@@ -5,13 +5,13 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 TMP_DIR="$PROJECT_DIR/tmp"
 mkdir -p "$TMP_DIR"
 
 # Configuration
 DURATION_PER_LEVEL=${DURATION_PER_LEVEL:-10}  # Seconds to run each concurrency level
-CONCURRENCY_LEVELS=${CONCURRENCY_LEVELS:-"1 5 10 20"}  # Space-separated concurrency levels
+CONCURRENCY_LEVELS=${CONCURRENCY_LEVELS:-"10 20 40 80"}  # Space-separated concurrency levels
 
 # Colors for output
 RED='\033[0;31m'
@@ -431,21 +431,33 @@ report_path = os.environ["REPORT_PATH"]
 results = json.loads(os.environ.get("ALL_RESULTS", "[]"))
 duration = os.environ.get("DURATION_PER_LEVEL", "")
 levels = os.environ.get("CONCURRENCY_LEVELS", "")
-run_ts = datetime.datetime.now().isoformat(timespec="seconds")
+run_ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def fmt(val):
     try:
-        return f"{float(val):.2f}"
-    except Exception:
+        v = float(val)
+        return f"{v:.2f}"
+    except (ValueError, TypeError):
         return "0.00"
 
+def get_winner(values, lower_is_better=True):
+    valid_values = {k: float(v) for k, v in values.items() if v and float(v) > 0}
+    if not valid_values:
+        return "N/A"
+    if lower_is_better:
+        winner = min(valid_values, key=valid_values.get)
+    else:
+        winner = max(valid_values, key=valid_values.get)
+    return winner
+
 lines = [
-    "# Automated Load Test Results",
+    "# 📊 Benchmark Results: BentoML vs FastAPI vs Ray Serve",
     "",
-    f"- Run timestamp: {run_ts}",
-    f"- Duration per level: {duration}s",
-    f"- Concurrency levels: {levels}",
-    "- Success criteria: HTTP 200",
+    f"**Run Date:** {run_ts}",
+    f"- **Duration per level:** {duration}s",
+    f"- **Concurrency levels:** {levels}",
+    "",
+    "## 🏆 Executive Summary",
     "",
 ]
 
@@ -456,51 +468,81 @@ if not results:
     print(report_path)
     raise SystemExit
 
-lines.append("## Throughput (req/s)")
-lines.append("| Concurrency | BentoML | FastAPI | Ray Serve |")
-lines.append("| --- | --- | --- | --- |")
+# Add Charts
+lines.append("## 📊 Visual Comparison")
+lines.append("![Throughput Comparison](throughput_comparison.png)")
+lines.append("![Latency Comparison](latency_comparison.png)")
+lines.append("")
+
+# Overall Winners
+latency_wins = {"BentoML": 0, "FastAPI": 0, "Ray Serve": 0}
+throughput_wins = {"BentoML": 0, "FastAPI": 0, "Ray Serve": 0}
+
 for r in results:
+    l_vals = {"BentoML": r.get("bentoml_avg"), "FastAPI": r.get("fastapi_avg"), "Ray Serve": r.get("rayserve_avg")}
+    t_vals = {"BentoML": r.get("bentoml_rps"), "FastAPI": r.get("fastapi_rps"), "Ray Serve": r.get("rayserve_rps")}
+    
+    l_winner = get_winner(l_vals, True)
+    if l_winner in latency_wins: latency_wins[l_winner] += 1
+    
+    t_winner = get_winner(t_vals, False)
+    if t_winner in throughput_wins: throughput_wins[t_winner] += 1
+
+best_latency = max(latency_wins, key=latency_wins.get)
+best_throughput = max(throughput_wins, key=throughput_wins.get)
+
+lines.append(f"- **Latency King:** {best_latency} (won {latency_wins[best_latency]}/{len(results)} levels)")
+lines.append(f"- **Throughput King:** {best_throughput} (won {throughput_wins[best_throughput]}/{len(results)} levels)")
+lines.append("")
+
+lines.append("## 📈 Throughput Comparison (req/s)")
+lines.append("| Concurrency | BentoML | FastAPI | Ray Serve | Winner |")
+lines.append("| :--- | :--- | :--- | :--- | :--- |")
+for r in results:
+    t_vals = {"BentoML": r.get("bentoml_rps"), "FastAPI": r.get("fastapi_rps"), "Ray Serve": r.get("rayserve_rps")}
+    winner = get_winner(t_vals, False)
     lines.append(
-        f"| {r['concurrency']} | {fmt(r.get('bentoml_rps'))} | {fmt(r.get('fastapi_rps'))} | {fmt(r.get('rayserve_rps'))} |"
+        f"| {r['concurrency']} | {fmt(r.get('bentoml_rps'))} | {fmt(r.get('fastapi_rps'))} | {fmt(r.get('rayserve_rps'))} | **{winner}** |"
     )
 
 lines.append("")
-lines.append("## Latency (avg / p95 ms)")
-lines.append("| Concurrency | BentoML avg | FastAPI avg | Ray Serve avg | BentoML p95 | FastAPI p95 | Ray Serve p95 |")
-lines.append("| --- | --- | --- | --- | --- | --- | --- |")
+lines.append("## ⏱️ Latency Comparison (Average ms)")
+lines.append("| Concurrency | BentoML | FastAPI | Ray Serve | Winner |")
+lines.append("| :--- | :--- | :--- | :--- | :--- |")
 for r in results:
+    l_vals = {"BentoML": r.get("bentoml_avg"), "FastAPI": r.get("fastapi_avg"), "Ray Serve": r.get("rayserve_avg")}
+    winner = get_winner(l_vals, True)
     lines.append(
-        f"| {r['concurrency']} | {fmt(r.get('bentoml_avg'))} | {fmt(r.get('fastapi_avg'))} | {fmt(r.get('rayserve_avg'))} | "
-        f"{fmt(r.get('bentoml_p95'))} | {fmt(r.get('fastapi_p95'))} | {fmt(r.get('rayserve_p95'))} |"
+        f"| {r['concurrency']} | {fmt(r.get('bentoml_avg'))} | {fmt(r.get('fastapi_avg'))} | {fmt(r.get('rayserve_avg'))} | **{winner}** |"
     )
 
 lines.append("")
-lines.append("## Per-Concurrency Details")
+lines.append("## 🎯 P95 Latency Comparison (ms)")
+lines.append("| Concurrency | BentoML | FastAPI | Ray Serve | Winner |")
+lines.append("| :--- | :--- | :--- | :--- | :--- |")
 for r in results:
-    lines.append(f"### Concurrency {r['concurrency']}")
-    lines.append("")
-    lines.append("- Throughput (req/s):")
+    p95_vals = {"BentoML": r.get("bentoml_p95"), "FastAPI": r.get("fastapi_p95"), "Ray Serve": r.get("rayserve_p95")}
+    winner = get_winner(p95_vals, True)
     lines.append(
-        f"  - BentoML: {fmt(r.get('bentoml_rps'))} | FastAPI: {fmt(r.get('fastapi_rps'))} | Ray Serve: {fmt(r.get('rayserve_rps'))}"
+        f"| {r['concurrency']} | {fmt(r.get('bentoml_p95'))} | {fmt(r.get('fastapi_p95'))} | {fmt(r.get('rayserve_p95'))} | **{winner}** |"
     )
-    lines.append("- Latency avg (ms):")
-    lines.append(
-        f"  - BentoML: {fmt(r.get('bentoml_avg'))} | FastAPI: {fmt(r.get('fastapi_avg'))} | Ray Serve: {fmt(r.get('rayserve_avg'))}"
-    )
-    lines.append("- Latency p95 (ms):")
-    lines.append(
-        f"  - BentoML: {fmt(r.get('bentoml_p95'))} | FastAPI: {fmt(r.get('fastapi_p95'))} | Ray Serve: {fmt(r.get('rayserve_p95'))}"
-    )
-    lines.append("")
+
+lines.append("")
+lines.append("---")
+lines.append("*Generated by Automated Benchmark Suite*")
 
 with open(report_path, "w", encoding="utf-8") as f:
     f.write("\n".join(lines))
 
-print(report_path)
-PY
-    echo "  Markdown report saved to: $REPORT_PATH"
-}
+# Also save to root directory
+root_report_path = os.path.join(os.path.dirname(os.path.dirname(report_path)), "loadtest_report.md")
+with open(root_report_path, "w", encoding="utf-8") as f:
+    f.write("\n".join(lines))
 
+    print(report_path)
+PY
+    echo "  Markdown report saved to: $REPORT_PATH and ./loadtest_report.md"
+}
 # Main execution
 main() {
     print_header "🚀 Automated Load Test - BentoML vs FastAPI vs Ray Serve"
@@ -591,6 +633,10 @@ main() {
     
     # Print final multi-level summary
     print_multi_level_summary
+
+    # Generate charts
+    echo "📊 Generating comparison charts..."
+    uvx --with matplotlib --with numpy python3 "$SCRIPT_DIR/generate-charts.py" "$ALL_RESULTS" "$TMP_DIR"
 
     # Write markdown report
     write_markdown_report
