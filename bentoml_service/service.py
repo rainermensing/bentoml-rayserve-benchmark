@@ -15,8 +15,10 @@ from PIL import Image
 # Get the directory where this service file is located
 SERVICE_DIR = Path(__file__).parent
 
-# Load ImageNet labels - look in same directory as service.py
+# Load ImageNet labels - look in same directory as service.py or in ../model/
 LABELS_PATH = SERVICE_DIR / "imagenet_labels.txt"
+if not LABELS_PATH.exists():
+    LABELS_PATH = SERVICE_DIR.parent / "model" / "imagenet_labels.txt"
 
 if LABELS_PATH.exists():
     with open(LABELS_PATH, "r") as f:
@@ -41,8 +43,11 @@ class MobileNetV2Classifier:
     def __init__(self):
         import tensorflow as tf
 
-        # Model is in the same directory as the service (bundled with source)
+        # Look for model in local dir or ../model/
         model_path = SERVICE_DIR / "mobilenet_v2.keras"
+        if not model_path.exists():
+            model_path = SERVICE_DIR.parent / "model" / "mobilenet_v2.keras"
+            
         self.model = tf.keras.models.load_model(str(model_path))
         print(f"Model loaded from {model_path}")
 

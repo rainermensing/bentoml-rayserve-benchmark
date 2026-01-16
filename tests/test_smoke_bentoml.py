@@ -14,9 +14,9 @@ from tests.smoke_utils import assert_prediction_body, generate_image_obj
 @pytest.mark.skipif(os.getenv("SKIP_BENTOML", "0") == "1", reason="BentoML skipped")
 def test_bentoml_smoke_local():
     # Model bundled next to service.py; no env override needed
-    module_path = pathlib.Path(__file__).resolve().parents[1] / "bentoml" / "service.py"
+    module_path = pathlib.Path(__file__).resolve().parents[1] / "bentoml_service" / "service.py"
     spec = importlib.util.spec_from_file_location("bentoml_service", module_path)
-    assert spec and spec.loader, "Failed to load bentoml/service.py"
+    assert spec and spec.loader, "Failed to load bentoml_service/service.py"
     svc_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(svc_mod)  # type: ignore[arg-type]
     svc = svc_mod.MobileNetV2Classifier()

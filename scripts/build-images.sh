@@ -24,20 +24,20 @@ build_if_exists() {
 ## contains a `service:` entry. An empty or incomplete bentofile will cause
 ## `bentoml build` to fail (observed previously), so we detect that and skip
 ## the Bento build in that case.
-if [ -f "bentoml/bentofile.yaml" ] || [ -f "bentoml/bentofile.yml" ]; then
+if [ -f "bentoml_service/bentofile.yaml" ] || [ -f "bentoml_service/bentofile.yml" ]; then
 	BENTOFILE=""
-	if [ -f "bentoml/bentofile.yaml" ]; then
-		BENTOFILE="bentoml/bentofile.yaml"
+	if [ -f "bentoml_service/bentofile.yaml" ]; then
+		BENTOFILE="bentoml_service/bentofile.yaml"
 	else
-		BENTOFILE="bentoml/bentofile.yml"
+		BENTOFILE="bentoml_service/bentofile.yml"
 	fi
 
 	if grep -Eiq "^\s*service\s*:" "$BENTOFILE"; then
 		echo "Found bentoml bentofile with 'service' entry — building bento with BentoML via uvx"
-		pushd bentoml >/dev/null
-		# Build the bento inside uvx to ensure isolated deps (Python 3.10 + TensorFlow)
-		# Capture the bento tag output so we can containerize it.
-		BENTO_TAG=$(uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.15.0 --with numpy --with pillow bentoml build -o tag 2>/dev/null || true)
+		# Build the bento inside uvx to ensure isolated deps (Python 3.11 + TensorFlow)
+		# We use the bentofile at bentoml_service/bentofile.yaml but set the build context to root (.)
+		# Set PYTHONPATH to root so bentoml_service is findable as a package
+		BENTO_TAG=$(PYTHONPATH=. uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.15.0 --with numpy --with pillow bentoml build -f "$BENTOFILE" . -o tag 2>/dev/null || true)
 		# Strip potential __tag__: prefix
 		BENTO_TAG=${BENTO_TAG#__tag__:}
 		
@@ -69,7 +69,6 @@ if [ -f "bentoml/bentofile.yaml" ] || [ -f "bentoml/bentofile.yml" ]; then
 				echo "Fallback build also failed; skipping containerize"
 			fi
 		fi
-		popd >/dev/null
 	else
 		echo "bentofile exists but does not contain 'service:' — skipping bentoml build"
 		echo "If you want to build a Bento, add a 'service:' entry to bentoml/bentofile.yaml"

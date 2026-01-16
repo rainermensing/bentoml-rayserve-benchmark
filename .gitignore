@@ -214,3 +214,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# local stuff
+model/imagenet_labels.txt
+model/mobilenet_v2.keras
+.DS_Store

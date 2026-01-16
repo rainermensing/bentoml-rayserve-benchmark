@@ -1,0 +1,8 @@
+service: "bentoml_service.service:MobileNetV2Classifier"
+include:
+  - "bentoml_service/*.py"
+  - "bentoml_service/requirements.txt"
+  - "model/mobilenet_v2.keras"
+  - "model/imagenet_labels.txt"
+python:
+  requirements_txt: "./bentoml_service/requirements.txt"
