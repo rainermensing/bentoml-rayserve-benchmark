@@ -86,7 +86,7 @@ python model/download_model.py
 # 3) Deploy to Kind
 ./scripts/deploy-k8s.sh
 
-# 4) Run load test (curl-based, writes Markdown to tmp/loadtest_report.md)
+# 4) Run load test (curl-based, writes Markdown to reports/generic/loadtest_report.md)
 ./scripts/automated-loadtest.sh
 ```
 
@@ -137,7 +137,7 @@ curl http://localhost:3000/health
 - Script: `scripts/automated-loadtest.sh`
 - Defaults: 10s per level; concurrencies `1 5 10 20`
 - Uses generated base64 JPEG payloads; direct `curl` POSTs to `/predict`
-- Outputs raw results to `tmp/loadtest_*.txt` and a Markdown summary to `tmp/loadtest_report.md`
+- Outputs raw results to `tmp/loadtest_*.txt` and a Markdown summary to `reports/generic/loadtest_report.md`
 - Override via env: `DURATION_PER_LEVEL=5 CONCURRENCY_LEVELS="1 5 10" ./scripts/automated-loadtest.sh`
 
 Locust UI remains available at http://localhost:8089 if you prefer browser-driven tests (see locust_service/locustfile.py).

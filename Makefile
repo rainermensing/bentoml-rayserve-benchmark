@@ -4,8 +4,16 @@ SHELL := /bin/bash
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 SCRIPTS := $(ROOT)/scripts
 
+# Generic loadtest parameters
+DURATION_PER_LEVEL ?= 10
+CONCURRENCY_LEVELS ?= 10 20 40 80
+# Locust parameters
+LOCUST_DURATION ?= 60s
+LOCUST_USERS ?= 80
+LOCUST_SPAWN_RATE ?= 2
+
 # Public targets
-.PHONY: benchmark setup build deploy loadtest cleanup test
+.PHONY: benchmark setup build deploy loadtest locust cleanup test
 
 benchmark: setup loadtest
 
@@ -26,7 +34,10 @@ deploy:
 	bash "$(SCRIPTS)/deploy-k8s.sh"
 
 loadtest: 
-	bash "$(SCRIPTS)/automated-loadtest.sh"
+	bash "$(SCRIPTS)/generic/automated-loadtest.sh" $(DURATION_PER_LEVEL) "$(CONCURRENCY_LEVELS)"
+
+locust: 
+	bash "$(SCRIPTS)/locust/run-locust-tests.sh" $(LOCUST_DURATION) $(LOCUST_USERS) $(LOCUST_SPAWN_RATE)
 
 cleanup:
 	bash "$(SCRIPTS)/cleanup.sh"

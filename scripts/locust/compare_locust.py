@@ -103,29 +103,26 @@ def generate_markdown(results, output_path):
         lines.append(f"- **Latency:** Avg: {res['avg']:.2f}ms | P95: {res['p95']:.2f}ms | P99: {res['p99']:.2f}ms | Max: {res['max']:.2f}ms")
     with open(output_path, 'w') as f:
         f.write("\n".join(lines))
-    
-    # Also save to root directory
-    root_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(output_path))), "locust_comparison.md")
-    with open(root_path, 'w') as f:
-        f.write("\n".join(lines))
 
-def main(tmp_dir):
+def main(data_dir, report_dir):
     results = {}
     for svc in ['BentoML', 'FastAPI', 'RayServe']:
-        stats_file = os.path.join(tmp_dir, f"{svc}_stats_stats.csv")
+        stats_file = os.path.join(data_dir, f"{svc}_stats_stats.csv")
         data = parse_locust_stats(stats_file)
         if data:
             results[svc] = data
     if results:
-        generate_charts(results, tmp_dir)
-        report_path = os.path.join(tmp_dir, "locust_comparison.md")
+        generate_charts(results, report_dir)
+        report_path = os.path.join(report_dir, "locust_comparison.md")
         generate_markdown(results, report_path)
         print(f"Unified Locust report with charts generated: {report_path}")
     else:
-        print(f"No Locust stats found in {tmp_dir} to compare.")
+        print(f"No Locust stats found in {data_dir} to compare.")
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        main(sys.argv[1])
+    if len(sys.argv) > 2:
+        main(sys.argv[1], sys.argv[2])
+    elif len(sys.argv) > 1:
+        main(sys.argv[1], sys.argv[1])
     else:
-        main("tmp/locust")
+        main("tmp/locust", "reports/locust")

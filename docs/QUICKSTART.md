@@ -91,7 +91,7 @@ If you prefer to control the load test manually:
 ## Step 7: Analyze Results
 
 If you ran the automated benchmark:
-- **Report**: `tmp/loadtest_report.md`
+- **Report**: `reports/generic/loadtest_report.md`
 - **Raw Data**: `tmp/loadtest_*.txt`
 
 If you ran Locust manually, you can download the report from the web UI.

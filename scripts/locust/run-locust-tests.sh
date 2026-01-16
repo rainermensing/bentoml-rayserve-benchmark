@@ -3,8 +3,10 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-TMP_DIR="$PROJECT_DIR/tmp/locust"
-mkdir -p "$TMP_DIR"
+REPORT_DIR="$PROJECT_DIR/reports/locust"
+DATA_DIR="$PROJECT_DIR/tmp/locust"
+mkdir -p "$REPORT_DIR"
+mkdir -p "$DATA_DIR"
 
 DURATION=${1:-"30s"}
 USERS=${2:-"10"}
@@ -36,7 +38,7 @@ trap cleanup EXIT
 run_locust() {
     local NAME=$1
     local URL=$2
-    local REPORT_BASE="$TMP_DIR/${NAME}"
+    local REPORT_BASE="$DATA_DIR/${NAME}"
     local HTML_REPORT="${REPORT_BASE}_report.html"
     local CSV_PREFIX="${REPORT_BASE}_stats"
     
@@ -52,7 +54,7 @@ run_locust() {
         --csv "$CSV_PREFIX" \
         --only-summary
     
-    echo "✓ $NAME reports generated (HTML & CSV) in $TMP_DIR"
+    echo "✓ $NAME reports generated (HTML & CSV) in $DATA_DIR"
 }
 
 run_locust "BentoML" "http://localhost:3000"
@@ -60,7 +62,7 @@ run_locust "FastAPI" "http://localhost:8000"
 run_locust "RayServe" "http://localhost:31800"
 
 echo "📊 Generating Locust comparison report with charts..."
-uvx --with matplotlib --with numpy python3 "$SCRIPT_DIR/compare_locust.py" "$TMP_DIR"
+uvx --with matplotlib --with numpy python3 "$SCRIPT_DIR/compare_locust.py" "$DATA_DIR" "$REPORT_DIR"
 
 echo ""
-echo "✅ All Locust tests complete. Reports are in $TMP_DIR"
+echo "✅ All Locust tests complete. Report is in $REPORT_DIR (Data in $DATA_DIR)"

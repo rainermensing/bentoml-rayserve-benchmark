@@ -87,14 +87,18 @@ The most important metric for model serving performance.
 
 ## Generating Comparison Charts
 
-Use the included Python script to generate comparison charts:
+The benchmark scripts automatically generate comparison charts and markdown reports in the `reports/` directory.
 
-```bash
-cd locust_service/results
-python ../analyze_results.py
-```
+### Locust Reports
+Located in `reports/locust/`:
+- `locust_comparison.md`: Unified report with charts
+- `locust_throughput.png`: Throughput visualization
+- `locust_latency.png`: Latency visualization
+- `*_report.html`: Individual Locust HTML reports
 
-This generates:
-- `comparison_throughput.png`
-- `comparison_latency.png`
-- `comparison_summary.md`
+### Generic Load Test Reports
+Located in `reports/generic/`:
+- `loadtest_report.md`: Comparison summary
+- `throughput_comparison.png`: Throughput trends
+- `latency_comparison.png`: Latency trends
+- `loadtest_*.txt`: Raw test results
