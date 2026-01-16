@@ -1,0 +1,4 @@
+# Model download dependencies
+# Pin TensorFlow to ensure Keras compatibility across all services
+tensorflow==2.15.0
+numpy>=1.24.0,<2.0.0

@@ -1,0 +1,22 @@
+import base64
+import io
+import os
+from typing import Dict
+
+import numpy as np
+from PIL import Image
+
+
+def generate_image_b64(width: int = 224, height: int = 224) -> str:
+    """Create a small random JPEG and return base64 string."""
+    img = Image.fromarray(
+        np.random.randint(0, 255, (height, width, 3), dtype=np.uint8), "RGB"
+    )
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=80)
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def assert_prediction_body(body: Dict):
+    preds = body.get("predictions")
+    assert isinstance(preds, list) and len(preds) > 0, body

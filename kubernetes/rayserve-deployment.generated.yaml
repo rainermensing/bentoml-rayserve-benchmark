@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rayserve-mobilenet
+  namespace: ml-benchmark
+  labels:
+    app: rayserve-mobilenet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rayserve-mobilenet
+  template:
+    metadata:
+      labels:
+        app: rayserve-mobilenet
+    spec:
+      containers:
+        - name: rayserve
+          image: ml-benchmark/rayserve-mobilenet:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: SERVE_HTTP_HOST
+              value: "0.0.0.0"
+            - name: SERVE_HTTP_PORT
+              value: "8000"
+            - name: RAY_NUM_REPLICAS
+              value: "1"
+            - name: RAY_NUM_CPUS
+              value: "1"
+            - name: RAY_MEMORY_BYTES
+              value: "1073741824" # 1GiB
+            - name: TF_NUM_INTRAOP_THREADS
+              value: "1"
+            - name: TF_NUM_INTEROP_THREADS
+              value: "1"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          volumeMounts:
+            - name: shm-volume
+              mountPath: /dev/shm
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 120
+            timeoutSeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 180
+            timeoutSeconds: 5
+            periodSeconds: 30
+      volumes:
+        - name: shm-volume
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rayserve-mobilenet
+  namespace: ml-benchmark
+  labels:
+    app: rayserve-mobilenet
+spec:
+  type: NodePort
+  ports:
+    - port: 8000
+      targetPort: 8000
+      nodePort: 31800
+      protocol: TCP
+      name: http
+  selector:
+    app: rayserve-mobilenet

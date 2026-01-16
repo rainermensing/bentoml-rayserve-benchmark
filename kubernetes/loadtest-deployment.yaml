@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-master
+  namespace: ml-benchmark
+  labels:
+    app: locust
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust
+  template:
+    metadata:
+      labels:
+        app: locust
+    spec:
+      containers:
+        - name: locust
+          image: ml-benchmark/loadtest:latest
+          imagePullPolicy: Never  # Use local image
+          ports:
+            - containerPort: 8089
+              name: web
+          env:
+            - name: BENTOML_HOST
+              value: "http://bentoml-mobilenet:3000"
+            - name: FASTAPI_HOST
+              value: "http://fastapi-mobilenet:8000"
+            - name: RAY_HOST
+              value: "http://rayserve-mobilenet:8000"
+          command:
+            - locust
+            - --web-host=0.0.0.0
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust-master
+  namespace: ml-benchmark
+  labels:
+    app: locust
+spec:
+  type: NodePort
+  ports:
+    - port: 8089
+      targetPort: 8089
+      nodePort: 30089
+      protocol: TCP
+      name: web
+  selector:
+    app: locust

@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-mobilenet
+  namespace: ml-benchmark
+  labels:
+    app: fastapi-mobilenet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fastapi-mobilenet
+  template:
+    metadata:
+      labels:
+        app: fastapi-mobilenet
+    spec:
+      containers:
+        - name: fastapi
+          image: ml-benchmark/fastapi-mobilenet:latest
+          imagePullPolicy: Never  # Use local image
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 90
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fastapi-mobilenet
+  namespace: ml-benchmark
+  labels:
+    app: fastapi-mobilenet
+spec:
+  type: NodePort
+  ports:
+    - port: 8000
+      targetPort: 8000
+      nodePort: 30800
+      protocol: TCP
+      name: http
+  selector:
+    app: fastapi-mobilenet
