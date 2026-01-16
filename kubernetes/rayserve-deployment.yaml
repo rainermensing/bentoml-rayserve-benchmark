@@ -53,13 +53,13 @@ spec:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 120
+            initialDelaySeconds: 30
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 180
+            initialDelaySeconds: 60
             periodSeconds: 30
       volumes:
         - name: rayserve-config

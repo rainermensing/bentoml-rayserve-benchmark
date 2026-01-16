@@ -6,7 +6,6 @@ Exposes `/health` and `/predict` endpoints. Loads a Keras model from
 
 from __future__ import annotations
 
-import base64
 import io
 import os
 from pathlib import Path
@@ -14,8 +13,7 @@ from typing import Any, Dict, List, Optional, Union
 from contextlib import asynccontextmanager
 
 import numpy as np
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from PIL import Image
 
 # Prefer environment variables set by tests or Dockerfile
@@ -36,18 +34,6 @@ def preprocess_image(image_data: bytes) -> np.ndarray:
     image = image.resize((224, 224))
     image_array = np.array(image, dtype=np.float32) / 255.0
     return np.expand_dims(image_array, axis=0)
-
-
-class PredictRequest(BaseModel):
-    image_base64: str
-
-
-def _as_dict(model: PredictRequest) -> dict:
-    """Return a plain dict from a Pydantic model compatible with v1 and v2."""
-    # Pydantic v2 has model_dump(), v1 has dict()
-    if hasattr(model, "model_dump"):
-        return model.model_dump()
-    return model.dict()
 
 
 @asynccontextmanager
@@ -79,31 +65,18 @@ def health() -> Dict[str, str]:
 
 
 @app.post("/predict")
-def predict(payload: Union[PredictRequest, List[PredictRequest]]) -> Any:
+async def predict(files: List[UploadFile] = File(...)) -> Any:
     model = getattr(app.state, "model", None)
     if model is None:
         # Re-raise original exception for clearer test errors
         raise HTTPException(status_code=500, detail=f"Model not loaded: {getattr(app.state, '_model_load_exception', None)}")
 
-    # Normalize to list
-    single = False
-    if isinstance(payload, PredictRequest):
-        payloads = [_as_dict(payload)]
-        single = True
-    else:
-        payloads = [_as_dict(p) for p in payload]
+    image_bytes_list: List[bytes] = []
+    for file in files:
+        content = await file.read()
+        image_bytes_list.append(content)
 
-    decoded_images: List[bytes] = []
-    for item in payloads:
-        img_b64 = item.get("image_base64")
-        if not isinstance(img_b64, str) or not img_b64:
-            raise HTTPException(status_code=400, detail="Field 'image_base64' must be a non-empty base64 string")
-        try:
-            decoded_images.append(base64.b64decode(img_b64))
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid base64 for 'image_base64'")
-
-    batch_tensor = np.vstack([preprocess_image(img) for img in decoded_images])
+    batch_tensor = np.vstack([preprocess_image(img) for img in image_bytes_list])
     preds = model.predict(batch_tensor, verbose=0)
 
     responses: List[Dict[str, Any]] = []
@@ -126,4 +99,8 @@ def predict(payload: Union[PredictRequest, List[PredictRequest]]) -> Any:
             }
         )
 
-    return responses[0] if single else responses
+    # If single file was uploaded, return single object?
+    # Usually consistent return type is better.
+    # But previous implementation handled single/list input.
+    # With UploadFile list, let's return a list to be safe and consistent with BentoML batching.
+    return responses

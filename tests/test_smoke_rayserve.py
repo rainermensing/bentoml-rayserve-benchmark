@@ -4,7 +4,7 @@ import pytest
 
 tf = pytest.importorskip("tensorflow")
 
-from tests.smoke_utils import assert_prediction_body, generate_image_b64
+from tests.smoke_utils import assert_prediction_body, generate_image_bytes
 
 
 @pytest.mark.skipif(os.getenv("SKIP_RAY", "0") == "1", reason="Ray Serve skipped")
@@ -18,10 +18,9 @@ def test_rayserve_smoke_local():
 
     model = tf.keras.models.load_model(os.getenv("MODEL_PATH"))
 
-    img_b64 = generate_image_b64()
-    import base64
+    img_bytes = generate_image_bytes()
 
-    tensor = app_mod.preprocess_image(base64.b64decode(img_b64))
+    tensor = app_mod.preprocess_image(img_bytes)
     preds = model.predict(tensor, verbose=0)
 
     # Reuse the Ray Serve response shaping logic

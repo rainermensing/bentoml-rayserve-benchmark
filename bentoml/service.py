@@ -5,14 +5,11 @@ BentoML service for MobileNetV2 image classification.
 from __future__ import annotations
 
 import typing as t
-import base64
-import io
 from pathlib import Path
 
 import numpy as np
 import bentoml
 from bentoml.exceptions import InvalidArgument
-from bentoml.io import JSON
 from PIL import Image
 
 # Get the directory where this service file is located
@@ -28,16 +25,14 @@ else:
     IMAGENET_LABELS = [f"class_{i}" for i in range(1001)]
 
 
-def preprocess_image(image_data: bytes) -> np.ndarray:
-    """Preprocess image for MobileNetV2."""
-    image = Image.open(io.BytesIO(image_data)).convert("RGB")
-    image = image.resize((224, 224))
-    image_array = np.array(image, dtype=np.float32) / 255.0
-    return np.expand_dims(image_array, axis=0)
+runtime_image = bentoml.images.PythonImage(
+    python_version="3.11"
+).requirements_file(str(SERVICE_DIR / "requirements.txt"))
 
 
 @bentoml.service(
-    resources={"cpu": "2", "memory": "2Gi"},
+    image=runtime_image,
+    resources={"cpu": "1", "memory": "2Gi"},
     traffic={"timeout": 60},
 )
 class MobileNetV2Classifier:
@@ -51,53 +46,44 @@ class MobileNetV2Classifier:
         self.model = tf.keras.models.load_model(str(model_path))
         print(f"Model loaded from {model_path}")
 
-    # BentoML 1.4 SDK expects pydantic models/dict for IO conversion
-    @bentoml.api(input_spec=dict, output_spec=dict)
-    def predict(self, payload: dict[str, t.Any]) -> dict[str, t.Any]:
-        """Predict image class from base64-encoded image (single request).
-
-        This matches the previous working behavior before the batchable change.
+    @bentoml.api(batchable=True)
+    def predict(self, files: list[Image.Image]) -> list[dict[str, t.Any]]:
+        """Predict image class from a batch of images.
         """
-
-        if not isinstance(payload, dict):
-            raise InvalidArgument("Request body must be a JSON object")
-
-        img_b64 = payload.get("image_base64")
-        if not isinstance(img_b64, str) or not img_b64:
-            raise InvalidArgument("Field 'image_base64' must be a non-empty base64 string")
-
-        # Be tolerant of whitespace/newlines and missing padding
-        s = img_b64.strip().replace('\n', '').replace('\r', '')
-        # add padding if needed
-        missing = len(s) % 4
-        if missing:
-            s += '=' * (4 - missing)
-
-        try:
-            decoded = base64.b64decode(s)
-        except Exception as exc:
-            raise InvalidArgument("Invalid base64 for 'image_base64'") from exc
-
-        tensor = preprocess_image(decoded)
+        # Preprocess batch
+        # Resize and normalize
+        processed_images = []
+        for img in files:
+            img = img.convert("RGB").resize((224, 224))
+            img_array = np.array(img, dtype=np.float32) / 255.0
+            processed_images.append(img_array)
+        
+        tensor = np.stack(processed_images)
+        
+        # Inference
         preds = self.model.predict(tensor, verbose=0)
 
-        pred = preds[0]
-        top_indices = np.argsort(pred)[-5:][::-1]
-        results = []
-        for idx in top_indices:
-            results.append(
-                {
-                    "class_id": int(idx),
-                    "class_name": IMAGENET_LABELS[idx] if idx < len(IMAGENET_LABELS) else f"class_{idx}",
-                    "confidence": float(pred[idx]),
-                }
-            )
+        # Postprocess
+        batch_results = []
+        for pred in preds:
+            top_indices = np.argsort(pred)[-5:][::-1]
+            results = []
+            for idx in top_indices:
+                results.append(
+                    {
+                        "class_id": int(idx),
+                        "class_name": IMAGENET_LABELS[idx] if idx < len(IMAGENET_LABELS) else f"class_{idx}",
+                        "confidence": float(pred[idx]),
+                    }
+                )
+            
+            batch_results.append({
+                "predictions": results,
+                "top_prediction": results[0]["class_name"],
+                "confidence": results[0]["confidence"],
+            })
 
-        return {
-            "predictions": results,
-            "top_prediction": results[0]["class_name"],
-            "confidence": results[0]["confidence"],
-        }
+        return batch_results
 
     @bentoml.api
     def health(self) -> dict[str, str]:

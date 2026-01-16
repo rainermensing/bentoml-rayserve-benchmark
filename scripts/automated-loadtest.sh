@@ -81,22 +81,17 @@ check_prerequisites() {
     fi
 }
 
-# Generate a sample base64 image payload
+# Generate a sample image payload
 generate_payload() {
-    # Create a minimal valid JPEG as base64 (small random image)
+    # Generate a real 224x224 JPEG image
     python3 -c "
-import base64
 import io
 from PIL import Image
 import numpy as np
-
-# Generate random 224x224 image
 img_array = np.random.randint(0, 256, (224, 224, 3), dtype=np.uint8)
 img = Image.fromarray(img_array, 'RGB')
-buffer = io.BytesIO()
-img.save(buffer, format='JPEG', quality=50)
-print(base64.b64encode(buffer.getvalue()).decode())
-" 2>/dev/null || echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+img.save('$TMP_DIR/test_image.jpg', format='JPEG')
+" 2>/dev/null
 }
 
 # Run load test against a service (duration-based)
@@ -113,11 +108,8 @@ run_load_test() {
     echo ""
     
     # Generate payload
-    local PAYLOAD=$(generate_payload)
-    local JSON_PAYLOAD="{\"image_base64\": \"${PAYLOAD}\"}"
-    
-    # Save payload to temp file
-    echo "$JSON_PAYLOAD" > "$TMP_DIR/payload.json"
+    generate_payload
+    local IMAGE_PATH="$TMP_DIR/test_image.jpg"
     
     # Health check first
     echo -n "  Health check: "
@@ -134,21 +126,15 @@ run_load_test() {
     local START_TIME=$(python3 -c "import time; print(time.time())")
     local SUCCESS=0
     local FAILED=0
-    local TOTAL_TIME=0
-    local MIN_TIME=999999
-    local MAX_TIME=0
-    local TIMES=()
     
     # Create a temporary script for parallel execution
-    local REQ_PAYLOAD_PATH="$TMP_DIR/payload.json"
     cat > "$TMP_DIR/run_request.sh" << 'REQSCRIPT'
 #!/bin/bash
 URL=$1
-PAYLOAD_PATH=$2
+IMAGE_PATH=$2
 START=$(python3 -c "import time; print(time.time())")
 RESPONSE=$(curl -s -w "\n%{http_code}" --connect-timeout 2 --max-time 8 -X POST "$URL/predict" \
-    -H "Content-Type: application/json" \
-    -d @"$PAYLOAD_PATH" 2>/dev/null)
+    -F "files=@$IMAGE_PATH" 2>/dev/null)
 END=$(python3 -c "import time; print(time.time())")
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 DURATION=$(python3 -c "print(round(($END - $START) * 1000, 2))")
@@ -170,7 +156,7 @@ REQSCRIPT
     for i in $(seq 1 $CONCURRENT); do
         (
             while [ $(date +%s) -lt $END_AT ]; do
-                "$TMP_DIR/run_request.sh" "$SERVICE_URL" "$REQ_PAYLOAD_PATH" >> "$RESULTS_FILE"
+                "$TMP_DIR/run_request.sh" "$SERVICE_URL" "$IMAGE_PATH" >> "$RESULTS_FILE"
             done
         ) &
         WORKER_PIDS+=($!)

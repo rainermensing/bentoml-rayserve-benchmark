@@ -1,6 +1,6 @@
 # Automated Load Test Results
 
-- Run timestamp: 2026-01-15T17:21:19
+- Run timestamp: 2026-01-16T15:28:31
 - Duration per level: s
 - Concurrency levels: 
 - Success criteria: HTTP 200
@@ -8,52 +8,52 @@
 ## Throughput (req/s)
 | Concurrency | BentoML | FastAPI | Ray Serve |
 | --- | --- | --- | --- |
-| 1 | 0.00 | 2.90 | 2.70 |
-| 5 | 0.00 | 13.10 | 12.50 |
-| 10 | 0.00 | 16.50 | 18.10 |
-| 20 | 0.00 | 15.60 | 18.10 |
+| 1 | 3.60 | 3.80 | 3.40 |
+| 5 | 16.20 | 17.10 | 12.50 |
+| 10 | 21.00 | 17.50 | 20.40 |
+| 20 | 23.20 | 17.30 | 21.30 |
 
 ## Latency (avg / p95 ms)
 | Concurrency | BentoML avg | FastAPI avg | Ray Serve avg | BentoML p95 | FastAPI p95 | Ray Serve p95 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 701.38 | 158.04 | 189.13 | 6136.85 | 190.35 | 184.88 |
-| 5 | 106.36 | 165.94 | 201.62 | 112.98 | 216.64 | 210.53 |
-| 10 | 168.56 | 274.21 | 277.52 | 181.93 | 354.76 | 347.07 |
-| 20 | 377.13 | 608.10 | 691.71 | 498.37 | 1127.65 | 883.78 |
+| 1 | 140.97 | 142.59 | 157.53 | 249.29 | 401.71 | 184.26 |
+| 5 | 146.26 | 143.81 | 227.33 | 203.59 | 206.20 | 250.36 |
+| 10 | 247.87 | 391.40 | 309.30 | 326.23 | 439.90 | 449.84 |
+| 20 | 520.86 | 942.13 | 664.94 | 684.68 | 1057.43 | 865.14 |
 
 ## Per-Concurrency Details
 ### Concurrency 1
 
 - Throughput (req/s):
-  - BentoML: 0.00 | FastAPI: 2.90 | Ray Serve: 2.70
+  - BentoML: 3.60 | FastAPI: 3.80 | Ray Serve: 3.40
 - Latency avg (ms):
-  - BentoML: 701.38 | FastAPI: 158.04 | Ray Serve: 189.13
+  - BentoML: 140.97 | FastAPI: 142.59 | Ray Serve: 157.53
 - Latency p95 (ms):
-  - BentoML: 6136.85 | FastAPI: 190.35 | Ray Serve: 184.88
+  - BentoML: 249.29 | FastAPI: 401.71 | Ray Serve: 184.26
 
 ### Concurrency 5
 
 - Throughput (req/s):
-  - BentoML: 0.00 | FastAPI: 13.10 | Ray Serve: 12.50
+  - BentoML: 16.20 | FastAPI: 17.10 | Ray Serve: 12.50
 - Latency avg (ms):
-  - BentoML: 106.36 | FastAPI: 165.94 | Ray Serve: 201.62
+  - BentoML: 146.26 | FastAPI: 143.81 | Ray Serve: 227.33
 - Latency p95 (ms):
-  - BentoML: 112.98 | FastAPI: 216.64 | Ray Serve: 210.53
+  - BentoML: 203.59 | FastAPI: 206.20 | Ray Serve: 250.36
 
 ### Concurrency 10
 
 - Throughput (req/s):
-  - BentoML: 0.00 | FastAPI: 16.50 | Ray Serve: 18.10
+  - BentoML: 21.00 | FastAPI: 17.50 | Ray Serve: 20.40
 - Latency avg (ms):
-  - BentoML: 168.56 | FastAPI: 274.21 | Ray Serve: 277.52
+  - BentoML: 247.87 | FastAPI: 391.40 | Ray Serve: 309.30
 - Latency p95 (ms):
-  - BentoML: 181.93 | FastAPI: 354.76 | Ray Serve: 347.07
+  - BentoML: 326.23 | FastAPI: 439.90 | Ray Serve: 449.84
 
 ### Concurrency 20
 
 - Throughput (req/s):
-  - BentoML: 0.00 | FastAPI: 15.60 | Ray Serve: 18.10
+  - BentoML: 23.20 | FastAPI: 17.30 | Ray Serve: 21.30
 - Latency avg (ms):
-  - BentoML: 377.13 | FastAPI: 608.10 | Ray Serve: 691.71
+  - BentoML: 520.86 | FastAPI: 942.13 | Ray Serve: 664.94
 - Latency p95 (ms):
-  - BentoML: 498.37 | FastAPI: 1127.65 | Ray Serve: 883.78
+  - BentoML: 684.68 | FastAPI: 1057.43 | Ray Serve: 865.14

@@ -8,7 +8,7 @@ import pytest
 bentoml = pytest.importorskip("bentoml")
 tf = pytest.importorskip("tensorflow")
 
-from tests.smoke_utils import assert_prediction_body, generate_image_b64
+from tests.smoke_utils import assert_prediction_body, generate_image_obj
 
 
 @pytest.mark.skipif(os.getenv("SKIP_BENTOML", "0") == "1", reason="BentoML skipped")
@@ -21,8 +21,10 @@ def test_bentoml_smoke_local():
     spec.loader.exec_module(svc_mod)  # type: ignore[arg-type]
     svc = svc_mod.MobileNetV2Classifier()
 
-    payload = generate_image_b64()
-    result = svc.predict(payload)
+    image = generate_image_obj()
+    # Predict expects a list of images (batch)
+    results = svc.predict([image])
 
-    assert isinstance(result, dict)
-    assert_prediction_body(result)
+    assert isinstance(results, list)
+    assert len(results) == 1
+    assert_prediction_body(results[0])

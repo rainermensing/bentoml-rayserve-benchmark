@@ -1,5 +1,7 @@
 ray[serve]==2.6.0
 fastapi==0.95.2
 pydantic==1.10.11
+tensorflow==2.15.0
 numpy
 Pillow
+python-multipart

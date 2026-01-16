@@ -72,25 +72,29 @@ kubectl port-forward svc/locust-master 8089:8089 -n ml-benchmark
 
 ## Step 6: Run Load Tests
 
-### Option A: Using Locust (Recommended)
-```bash
-# Headless mode
-./scripts/run-loadtest.sh
+### Automated CLI Benchmark (Recommended)
+This runs a sequence of load tests at increasing concurrency levels and generates a Markdown report.
 
-# Or use the web UI at http://localhost:8089
+```bash
+./scripts/automated-loadtest.sh
 ```
 
-### Option B: Using k6
-```bash
-TOOL=k6 ./scripts/run-loadtest.sh
-```
+### Manual Locust Testing
+If you prefer to control the load test manually:
+1. Open http://localhost:8089 in your browser.
+2. Set the host to one of the following:
+   - BentoML: `http://bentoml-mobilenet:3000`
+   - FastAPI: `http://fastapi-mobilenet:8000`
+   - Ray Serve: `http://rayserve-mobilenet:8000`
+3. Start the test.
 
 ## Step 7: Analyze Results
 
-Results are saved in `loadtest/results/`:
-- `*_stats.csv` - Request statistics
-- `*_stats_history.csv` - Time-series data
-- `*_report.html` - Visual HTML report
+If you ran the automated benchmark:
+- **Report**: `tmp/loadtest_report.md`
+- **Raw Data**: `tmp/loadtest_*.txt`
+
+If you ran Locust manually, you can download the report from the web UI.
 
 ## Cleanup
 

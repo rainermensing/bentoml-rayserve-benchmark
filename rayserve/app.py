@@ -6,14 +6,13 @@ existing BentoML and FastAPI demos: `/predict` and `/health`.
 """
 from __future__ import annotations
 
-import base64
 import io
 import os
 import typing as t
 
 import numpy as np
 import tensorflow as tf
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from PIL import Image
 from ray import serve
@@ -38,10 +37,6 @@ def load_labels(path: str) -> list[str]:
 
 
 IMAGENET_LABELS = load_labels(LABELS_PATH)
-
-
-class PredictRequest(BaseModel):
-    image_base64: str
 
 
 class PredictionResult(BaseModel):
@@ -95,16 +90,29 @@ class MobileNetV2Deployment:
         return HealthResponse(status="healthy", service="rayserve-mobilenetv2")
 
     @serve.batch(max_batch_size=8, batch_wait_timeout_s=0.01)
-    async def _batched_predict(self, requests: list[PredictRequest]) -> list[PredictResponse]:
-        """Batch incoming requests to share one model.predict call."""
+    async def _batched_predict(self, requests: list[list[bytes]]) -> list[list[PredictResponse]]:
+        """Batch incoming requests to share one model.predict call.
+        
+        Args:
+            requests: A list of requests, where each request is a list of image bytes.
+        """
+        # Flatten requests to a single list of images
+        all_images = [img for req in requests for img in req]
+        request_sizes = [len(req) for req in requests]
+        
+        if not all_images:
+             return [[] for _ in requests]
+
         try:
-            tensors = [preprocess_image(base64.b64decode(req.image_base64)) for req in requests]
+            tensors = [preprocess_image(img) for img in all_images]
             batch = np.vstack(tensors)
             predictions = self.model.predict(batch, verbose=0)
         except Exception as exc:  # noqa: BLE001 - surfaced to caller
+             # If inference fails, fail all requests in this batch
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        responses: list[PredictResponse] = []
+        # Process results
+        all_results: list[PredictResponse] = []
         for pred in predictions:
             top_indices = np.argsort(pred)[-5:][::-1]
             results: list[PredictionResult] = []
@@ -117,7 +125,7 @@ class MobileNetV2Deployment:
                         confidence=float(pred[idx]),
                     )
                 )
-            responses.append(
+            all_results.append(
                 PredictResponse(
                     predictions=results,
                     top_prediction=results[0].class_name,
@@ -125,13 +133,25 @@ class MobileNetV2Deployment:
                 )
             )
 
+        # Un-flatten results back to per-request lists
+        responses: list[list[PredictResponse]] = []
+        start_idx = 0
+        for size in request_sizes:
+            responses.append(all_results[start_idx : start_idx + size])
+            start_idx += size
+            
         return responses
 
-    @fastapi_app.post("/predict", response_model=PredictResponse)
-    async def predict(self, request: PredictRequest) -> PredictResponse:
-        # Ray Serve will batch concurrent calls to _batched_predict; each caller receives one response.
-        result = await self._batched_predict(request)
-        return result[0] if isinstance(result, list) else result
+    @fastapi_app.post("/predict", response_model=list[PredictResponse])
+    async def predict(self, files: list[UploadFile] = File(...)) -> list[PredictResponse]:
+        # Read all files to bytes
+        images_data = []
+        for file in files:
+            content = await file.read()
+            images_data.append(content)
+            
+        # Ray Serve will batch concurrent calls to _batched_predict
+        return await self._batched_predict(images_data)
 
 
 graph = MobileNetV2Deployment.bind()

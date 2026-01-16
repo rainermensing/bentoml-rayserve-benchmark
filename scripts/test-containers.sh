@@ -1,130 +1,133 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Test containerized services (assumes images already built locally)
-# Usage: ./scripts/test-containers.sh [image1 image2 ...]
+# Start containers from built images one by one, probe /health and /predict, then clean up.
+# Usage: ./scripts/run-and-test-containers.sh
 
 WD=$(cd "$(dirname "$0")/.." && pwd)
 cd "$WD"
 
-IMAGES=("ml-benchmark/fastapi-mobilenet:latest" "ml-benchmark/bentoml-mobilenet:latest" "ml-benchmark/rayserve-mobilenet:latest")
-if [ $# -gt 0 ]; then
-  IMAGES=("$@")
-fi
-
-start_and_test() {
-  local image="$1"
-  local name
-  name=$(echo "$image" | sed 's/[^a-zA-Z0-9]/_/g')
-  cname="test_${name}_$$"
-
-  echo "\n=== Testing image: $image (container: $cname) ==="
-
-  cid=$(docker run -d --rm -P --name "$cname" "$image" 2>&1 | tail -n1 || true)
-  if [ -z "$cid" ]; then
-    echo "Failed to start container for $image" >&2
-    return 1
-  fi
-
-  # get mapped port heuristically: prefer 8000 then 3000
-  mapped_port=""
-  for port in 8000 3000; do
-    mapped=$(docker port "$cid" ${port}/tcp 2>/dev/null || true)
-    if [ -n "$mapped" ]; then
-      mapped_port=$(echo "$mapped" | sed 's/.*://;q')
-      break
+start_container() {
+    local name=$1 image=$2
+    echo "Starting $name from image $image" >&2
+    # Run detached, capture the container id.
+    id=$(docker run -d -P --name "$name" "$image" 2>&1 | tail -n1 || true)
+    # Validate we have a reasonable id (64+ hex chars) and that container exists
+    if [ -n "$id" ] && docker ps -a --no-trunc --filter "id=$id" --format '{{.ID}}' | grep -q .; then
+        echo "$id"
+    else
+        echo ""
     fi
-  done
-
-  if [ -z "$mapped_port" ]; then
-    echo "Could not determine mapped port for $image (cid=$cid)" >&2
-    docker logs "$cid" --tail 100 || true
-    docker rm -f "$cid" || true
-    return 1
-  fi
-
-  echo "Mapped port: $mapped_port"
-
-  # wait for /health
-  for i in $(seq 1 60); do
-    # ensure container is still running
-    running=$(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null || echo false)
-    if [ "$running" != "true" ]; then
-      echo "Container $cid exited unexpectedly" >&2
-      docker logs "$cid" --tail 200 || true
-      docker rm -f "$cid" >/dev/null 2>&1 || true
-      return 1
-    fi
-    if curl -sS -f http://localhost:$mapped_port/health >/dev/null 2>&1; then
-      echo "/health OK"
-      break
-    fi
-    sleep 0.5
-  done
-
-  # POST using Python (avoids shell quoting/padding issues with very long base64 strings)
-  echo "Posting to /predict via Python client..."
-  export MAPPED_PORT=$mapped_port
-
-  # Helper to call predict with a given image size. Python prints a STATUS:<code> line then the body.
-  call_predict() {
-    local size=$1
-    python3 - <<PY
-import os, base64, io, requests, sys, json
-from PIL import Image
-import numpy as np
-port = os.environ.get('MAPPED_PORT')
-if not port:
-    print('STATUS:ERR')
-    sys.exit(2)
-img = Image.fromarray((np.random.rand($size,$size,3)*255).astype('uint8'))
-buf = io.BytesIO(); img.save(buf, 'JPEG')
-img_b64 = base64.b64encode(buf.getvalue()).decode()
-try:
-    r = requests.post(f'http://localhost:{port}/predict', json={'image_base64': img_b64}, timeout=60)
-    print(f'STATUS:{r.status_code}')
-    try:
-        print(json.dumps(r.json()))
-    except Exception:
-        print(r.text[:1000])
-except Exception as e:
-    print('STATUS:ERR')
-    print(str(e))
-    sys.exit(1)
-PY
-  }
-
-  # Try full-size then smaller sizes if Bento complains about base64 padding.
-  out=$(call_predict 224)
-  status=$(echo "$out" | sed -n '1p' | sed 's/^STATUS://') || true
-  echo "$out" | sed -n '2,200p'
-  if [ "$status" = "400" ] || [ "$status" = "ERR" ]; then
-    # Check if response contains the Invalid base64 marker; if so, retry smaller images
-    body=$(echo "$out" | sed -n '2,200p')
-    if echo "$body" | grep -qi "Invalid base64" || [ "$status" = "ERR" ]; then
-      echo "Predict failed with base64 error, retrying smaller images..."
-      for s in 128 64; do
-        echo "Trying size $s"
-        out=$(call_predict $s)
-        status=$(echo "$out" | sed -n '1p' | sed 's/^STATUS://') || true
-        echo "$out" | sed -n '2,200p'
-        if [ "$status" = "200" ]; then
-          break
-        fi
-      done
-    fi
-  fi
-
-
-  echo "---- Container logs (tail 200) ----"
-  docker logs "$cid" --tail 200 || true
-
-  docker rm -f "$cid" >/dev/null 2>&1 || true
-  echo "Done testing $image"
 }
 
-for img in "${IMAGES[@]}"; do
-  start_and_test "$img"
-done
+docker_port() {
+    local cid=$1 cport=$2
+    if [ -z "$cid" ]; then
+        echo ""
+        return
+    fi
+    # docker port returns HOST:PORT, we strip host
+    docker port "$cid" "$cport" 2>/dev/null | sed 's/.*://;q' || true
+}
 
-echo "\nAll done."
+run_test() {
+    local service_name=$1
+    local image=$2
+    local internal_port=$3
+    local file_key=$4
+
+    echo "================================================"
+    echo "Testing $service_name..."
+    CID=$(start_container "${service_name}_test" "$image")
+    if [ -z "$CID" ]; then echo "Failed to start $service_name"; return; fi
+    
+    # Wait a bit for startup
+    sleep 5
+    
+    PORT=$(docker_port "$CID" "$internal_port/tcp" || true)
+    
+    if [ -z "$PORT" ]; then
+        echo "No port mapping for $service_name. Logs:"
+        docker logs "$CID" 2>&1 | tail -n 20
+        docker rm -f "$CID" >/dev/null 2>&1 || true
+        return
+    fi
+    
+    echo "$service_name running at http://localhost:$PORT"
+    
+    # Run python test
+    export TEST_PORT="$PORT"
+    export TEST_NAME="$service_name"
+    export TEST_KEY="$file_key"
+    
+    uvx --with requests --with pillow --with numpy python - <<'PY'
+import os, requests, io, time, sys
+from PIL import Image
+import numpy as np
+
+base_url = f"http://localhost:{os.environ['TEST_PORT']}"
+name = os.environ['TEST_NAME']
+key = os.environ['TEST_KEY']
+
+print(f"Checking health for {name} at {base_url}...")
+health_ok = False
+for _ in range(10):
+    try:
+        # Try /health (GET)
+        r = requests.get(f"{base_url}/health", timeout=2)
+        if r.status_code == 200:
+            health_ok = True
+            break
+        # If 404 or 405, try /healthz (GET) or /health (POST)
+        if r.status_code in [404, 405]:
+            r_z = requests.get(f"{base_url}/healthz", timeout=2)
+            if r_z.status_code == 200:
+                health_ok = True
+                r = r_z
+                break
+            r_post = requests.post(f"{base_url}/health", timeout=2)
+            if r_post.status_code == 200:
+                health_ok = True
+                r = r_post
+                break
+        
+        print(f"Health: {r.status_code} {r.text[:100]}")
+    except Exception as e:
+        print(f"Health check retry: {e}")
+    time.sleep(1)
+
+if not health_ok:
+    print("Health check failed permanently.")
+    sys.exit(1)
+
+print(f"Sending predict request...")
+img = Image.fromarray(np.random.randint(0,255,(224,224,3),dtype='uint8'))
+buf = io.BytesIO(); img.save(buf, format='JPEG')
+img_bytes = buf.getvalue()
+
+# Send list of files
+files = [(key, ('test.jpg', img_bytes, 'image/jpeg'))]
+
+try:
+    r = requests.post(f"{base_url}/predict", files=files, timeout=10)
+    print(f"Predict: {r.status_code}")
+    if r.status_code == 200:
+        print(f"Success! Response: {r.text[:200]}...")
+    else:
+        print(f"Failed: {r.text[:500]}")
+except Exception as e:
+    print(f"Predict failed: {e}")
+PY
+
+    echo "Logs for $service_name (tail):"
+    docker logs "$CID" 2>&1 | tail -n 10
+    
+    echo "Stopping $service_name..."
+    docker rm -f "$CID" >/dev/null 2>&1 || true
+    echo "Done with $service_name"
+    echo "================================================"
+}
+
+run_test "fastapi" "ml-benchmark/fastapi-mobilenet:latest" 8000 "files"
+run_test "bentoml" "ml-benchmark/bentoml-mobilenet:latest" 3000 "files"
+run_test "rayserve" "ml-benchmark/rayserve-mobilenet:latest" 8000 "files"

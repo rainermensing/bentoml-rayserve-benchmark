@@ -49,7 +49,7 @@ Both services use **MobileNetV2** (pre-trained on ImageNet) for image classifica
 │   ├── build-images.sh          # Build Docker images (BentoML, FastAPI, Ray Serve, loadtest)
 │   ├── deploy-k8s.sh            # Deploy to Kubernetes / Kind
 │   ├── automated-loadtest.sh    # CLI load test (curl-based) + Markdown report
-│   ├── run-loadtest.sh          # Legacy helper for Locust-based runs
+│   ├── test-containers.sh       # Run smoke tests on local Docker containers
 │   └── cleanup.sh               # Cleanup resources
 └── docs/
     ├── QUICKSTART.md            # Quick start guide

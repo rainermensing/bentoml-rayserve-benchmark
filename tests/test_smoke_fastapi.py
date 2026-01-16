@@ -9,7 +9,7 @@ fastapi = pytest.importorskip("fastapi")
 tf = pytest.importorskip("tensorflow")
 from fastapi.testclient import TestClient
 
-from tests.smoke_utils import assert_prediction_body, generate_image_b64
+from tests.smoke_utils import assert_prediction_body, generate_image_bytes
 
 
 @pytest.mark.skipif(os.getenv("SKIP_FASTAPI", "0") == "1", reason="FastAPI skipped")
@@ -30,7 +30,14 @@ def test_fastapi_smoke_local():
         resp = client.get("/health")
         assert resp.status_code == 200
 
-        payload = {"image_base64": generate_image_b64()}
-        resp = client.post("/predict", json=payload)
+        image_bytes = generate_image_bytes()
+        # Upload as a list of files
+        files = [('files', ('test.jpg', image_bytes, 'image/jpeg'))]
+        
+        resp = client.post("/predict", files=files)
         assert resp.status_code == 200, resp.text
-        assert_prediction_body(resp.json())
+        
+        results = resp.json()
+        assert isinstance(results, list)
+        assert len(results) == 1
+        assert_prediction_body(results[0])
