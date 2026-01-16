@@ -34,7 +34,7 @@ spec:
             - name: RAY_NUM_CPUS
               value: "1"
             - name: RAY_MEMORY_BYTES
-              value: "1073741824"  # 1GiB
+              value: "2147483648"  # 2GiB
             - name: TF_NUM_INTRAOP_THREADS
               value: "1"
             - name: TF_NUM_INTEROP_THREADS

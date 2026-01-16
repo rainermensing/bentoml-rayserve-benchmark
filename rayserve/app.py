@@ -25,7 +25,7 @@ logger = logging.getLogger("ray.serve")
 MODEL_PATH = os.getenv("MODEL_PATH", "/app/model/mobilenet_v2.keras")
 LABELS_PATH = os.getenv("LABELS_PATH", "/app/imagenet_labels.txt")
 NUM_REPLICAS = int(os.getenv("RAY_NUM_REPLICAS", "1"))
-NUM_CPUS = float(os.getenv("RAY_NUM_CPUS", "2"))
+NUM_CPUS = float(os.getenv("RAY_NUM_CPUS", "1"))
 MEMORY_BYTES = int(os.getenv("RAY_MEMORY_BYTES", str(2 * 1024 * 1024 * 1024)))
 
 def load_labels(path: str) -> list[str]:

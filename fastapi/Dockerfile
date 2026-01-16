@@ -27,5 +27,5 @@ ENV TF_NUM_INTEROP_THREADS=1
 
 EXPOSE 8000
 
-# Run with uvicorn, align workers to 2 cores (matches k8s limits)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Run with uvicorn, align workers to 1 core (matches k8s limits)
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

@@ -22,10 +22,10 @@ build: test
 	bash "$(SCRIPTS)/build-images.sh"
 	bash "$(SCRIPTS)/test-containers.sh"
 
-deploy: build
+deploy: 
 	bash "$(SCRIPTS)/deploy-k8s.sh"
 
-loadtest: deploy
+loadtest: 
 	bash "$(SCRIPTS)/automated-loadtest.sh"
 
 cleanup:

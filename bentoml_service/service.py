@@ -51,7 +51,12 @@ class MobileNetV2Classifier:
         self.model = tf.keras.models.load_model(str(model_path))
         print(f"Model loaded from {model_path}")
 
-    @bentoml.api(batchable=True)
+    @bentoml.api(
+        batchable=True,
+        batch_dim=0,
+        max_batch_size=8,
+        max_latency_ms=10,
+    )
     def predict(self, files: list[Image.Image]) -> list[dict[str, t.Any]]:
         """Predict image class from a batch of images.
         """
