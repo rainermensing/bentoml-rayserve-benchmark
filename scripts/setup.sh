@@ -36,8 +36,7 @@ fi
 # Step 2: Prepare BentoML service
 echo ""
 echo "Step 2: Preparing BentoML service..."
-cp model/mobilenet_v2.keras bentoml/
-cp model/imagenet_labels.txt bentoml/
+
 
 # Step 3: Build images (uses uvx with Python 3.10 for Bento)
 echo ""
@@ -52,7 +51,7 @@ echo "Step 4: Deploying to Kubernetes..."
 # Step 5: Wait for pods
 echo ""
 echo "Step 5: Waiting for pods to be ready..."
-kubectl wait --for=condition=ready pod -l app=locust -n ml-benchmark --timeout=120s || true
+#kubectl wait --for=condition=ready pod -l app=locust -n ml-benchmark --timeout=120s || true
 kubectl wait --for=condition=ready pod -l app=bentoml-mobilenet -n ml-benchmark --timeout=300s || true
 kubectl wait --for=condition=ready pod -l app=fastapi-mobilenet -n ml-benchmark --timeout=300s || true
 kubectl wait --for=condition=ready pod -l app=rayserve-mobilenet -n ml-benchmark --timeout=300s || true

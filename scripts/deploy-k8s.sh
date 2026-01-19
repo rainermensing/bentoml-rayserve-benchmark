@@ -26,7 +26,7 @@ echo "Loading Docker images into Kind cluster..."
 kind load docker-image ml-benchmark/bentoml-mobilenet:latest --name ml-benchmark
 kind load docker-image ml-benchmark/fastapi-mobilenet:latest --name ml-benchmark
 kind load docker-image ml-benchmark/rayserve-mobilenet:latest --name ml-benchmark
-kind load docker-image ml-benchmark/locust-service:latest --name ml-benchmark
+#kind load docker-image ml-benchmark/locust-service:latest --name ml-benchmark
 
 # Apply Kubernetes manifests
 echo ""
@@ -34,8 +34,9 @@ echo "Applying Kubernetes manifests..."
 kubectl apply -f kubernetes/namespace.yaml
 kubectl apply -f kubernetes/bentoml-deployment.yaml
 kubectl apply -f kubernetes/fastapi-deployment.yaml
+kubectl apply -f kubernetes/rayserve-configmap.yaml
 kubectl apply -f kubernetes/rayserve-deployment.yaml
-kubectl apply -f kubernetes/locust-service-deployment.yaml
+#kubectl apply -f kubernetes/locust-service-deployment.yaml
 
 # Wait for deployments
 echo ""
@@ -43,7 +44,7 @@ echo "Waiting for deployments to be ready..."
 kubectl rollout status deployment/bentoml-mobilenet -n ml-benchmark --timeout=300s || true
 kubectl rollout status deployment/fastapi-mobilenet -n ml-benchmark --timeout=300s || true
 kubectl rollout status deployment/rayserve-mobilenet -n ml-benchmark --timeout=300s || true
-kubectl rollout status deployment/locust-master -n ml-benchmark --timeout=120s || true
+#kubectl rollout status deployment/locust-master -n ml-benchmark --timeout=120s || true
 
 # Show status
 echo ""
@@ -58,4 +59,4 @@ echo "Services are accessible at:"
 echo "  - BentoML:   http://localhost:3000"
 echo "  - FastAPI:   http://localhost:8000"
 echo "  - Ray Serve: http://localhost:31800"
-echo "  - Locust UI: http://localhost:8089"
+#echo "  - Locust UI: http://localhost:8089"

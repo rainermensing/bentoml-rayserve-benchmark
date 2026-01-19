@@ -89,6 +89,6 @@ fi
 build_if_exists "rayserve-mobilenet" "rayserve/Dockerfile" "."
 
 # Locust service image
-build_if_exists "locust-service" "locust_service/Dockerfile" "."
+#build_if_exists "locust-service" "locust_service/Dockerfile" "."
 
 echo "Docker image build step complete"
