@@ -70,7 +70,8 @@ Both services use **MobileNetV2** (pre-trained on ImageNet) for image classifica
 
 ```bash
 make setup     # download model, build images, create Kind cluster, deploy
-make loadtest  # run automated load test and emit Markdown report
+make loadtest  # run automated load test and emit Markdown report to report/generic
+make locust  # alternatively, run a loadtest with locust and generate a report/locust
 make cleanup   # tear everything down
 ```
 
