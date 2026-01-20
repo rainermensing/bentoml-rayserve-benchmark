@@ -26,9 +26,9 @@ echo "=========================================="
 
 # Step 1: Download model with uvx (no virtualenv)
 echo ""
-echo "Step 1: Downloading MobileNetV2 model (uvx python3.10)..."
+echo "Step 1: Downloading MobileNetV2 model (uvx python3.11)..."
 if [ ! -f "model/mobilenet_v2.keras" ]; then
-    uvx --python 3.10 --with tensorflow==2.15.0 --with "numpy>=1.24.0,<2.0.0" python model/download_model.py
+    uvx --python 3.11 --with tensorflow==2.16.1 --with "numpy>=1.24.0,<2.0.0" python model/download_model.py
 else
     echo "Model already exists, skipping download"
 fi

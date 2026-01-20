@@ -2,7 +2,7 @@
 Download and save MobileNetV2 model for both BentoML and FastAPI services.
 Uses TensorFlow's built-in MobileNetV2 for ImageNet classification.
 
-IMPORTANT: This script must be run with TensorFlow 2.15.0 to ensure
+IMPORTANT: This script must be run with TensorFlow 2.16.1 to ensure
 model compatibility with the containerized services.
 """
 
@@ -71,10 +71,10 @@ if __name__ == "__main__":
     
     # Check TensorFlow version
     tf_version = tf.__version__
-    if not tf_version.startswith("2.15"):
+    if not tf_version.startswith("2.16"):
         print(f"WARNING: Using TensorFlow {tf_version}")
-        print("For best compatibility, use TensorFlow 2.15.0:")
-        print("  uv pip install tensorflow==2.15.0")
+        print("For best compatibility, use TensorFlow 2.16.1:")
+        print("  uv pip install tensorflow==2.16.1")
         print()
     
     model_path = download_and_save_model()

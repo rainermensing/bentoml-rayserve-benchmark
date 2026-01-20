@@ -26,7 +26,7 @@ MODEL_PATH = os.getenv("MODEL_PATH", "/app/model/mobilenet_v2.keras")
 LABELS_PATH = os.getenv("LABELS_PATH", "/app/imagenet_labels.txt")
 NUM_REPLICAS = int(os.getenv("RAY_NUM_REPLICAS", "1"))
 NUM_CPUS = float(os.getenv("RAY_NUM_CPUS", "1"))
-MEMORY_BYTES = int(os.getenv("RAY_MEMORY_BYTES", str(2 * 1024 * 1024 * 1024)))
+MEMORY_BYTES = int(os.getenv("RAY_MEMORY_BYTES", str(512 * 1024 * 1024)))
 
 def load_labels(path: str) -> list[str]:
     """Load ImageNet labels from a file."""
@@ -77,6 +77,7 @@ fastapi_app = FastAPI(
 
 @serve.deployment(
     num_replicas=NUM_REPLICAS,
+    max_ongoing_requests=100,
     ray_actor_options={
         "num_cpus": NUM_CPUS,
         "memory": MEMORY_BYTES,

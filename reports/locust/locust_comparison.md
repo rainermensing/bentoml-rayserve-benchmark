@@ -1,6 +1,6 @@
 # 📈 Locust Load Test Comparison
 
-**Run Date:** 2026-01-19 16:44:47
+**Run Date:** 2026-01-19 18:15:06
 
 ## 📊 Visual Comparison
 ![Throughput](locust_throughput.png)
@@ -10,26 +10,26 @@
 
 | Metric | BentoML | FastAPI | Ray Serve | Winner |
 | :--- | :--- | :--- | :--- | :--- |
-| Throughput (req/s) | 26.34 | 21.06 | 25.10 | **BentoML** |
-| Avg Latency (ms) | 105.29 | 587.21 | 191.58 | **BentoML** |
-| P50 Latency (ms) | 92.00 | 600.00 | 170.00 | **BentoML** |
-| P95 Latency (ms) | 220.00 | 1300.00 | 410.00 | **BentoML** |
-| P99 Latency (ms) | 320.00 | 1600.00 | 500.00 | **BentoML** |
-| Total Requests | 1559.00 | 1238.00 | 1483.00 | **BentoML** |
+| Throughput (req/s) | 42.96 | 21.81 | 33.31 | **BentoML** |
+| Avg Latency (ms) | 473.61 | 1225.99 | 698.34 | **BentoML** |
+| P50 Latency (ms) | 500.00 | 1400.00 | 770.00 | **BentoML** |
+| P95 Latency (ms) | 710.00 | 1700.00 | 940.00 | **BentoML** |
+| P99 Latency (ms) | 830.00 | 2200.00 | 990.00 | **BentoML** |
+| Total Requests | 2538.00 | 1275.00 | 1970.00 | **BentoML** |
 
 ## 📋 Detailed Results per Service
 
 ### BentoML
-- **Requests:** 1559 (0 failures)
-- **RPS:** 26.34
-- **Latency:** Avg: 105.29ms | P95: 220.00ms | P99: 320.00ms | Max: 388.81ms
+- **Requests:** 2538 (0 failures)
+- **RPS:** 42.96
+- **Latency:** Avg: 473.61ms | P95: 710.00ms | P99: 830.00ms | Max: 970.91ms
 
 ### FastAPI
-- **Requests:** 1238 (0 failures)
-- **RPS:** 21.06
-- **Latency:** Avg: 587.21ms | P95: 1300.00ms | P99: 1600.00ms | Max: 3134.56ms
+- **Requests:** 1275 (0 failures)
+- **RPS:** 21.81
+- **Latency:** Avg: 1225.99ms | P95: 1700.00ms | P99: 2200.00ms | Max: 6259.47ms
 
 ### RayServe
-- **Requests:** 1483 (0 failures)
-- **RPS:** 25.10
-- **Latency:** Avg: 191.58ms | P95: 410.00ms | P99: 500.00ms | Max: 642.18ms
+- **Requests:** 1970 (0 failures)
+- **RPS:** 33.31
+- **Latency:** Avg: 698.34ms | P95: 940.00ms | P99: 990.00ms | Max: 1056.14ms

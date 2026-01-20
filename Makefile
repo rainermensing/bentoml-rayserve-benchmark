@@ -9,7 +9,8 @@ DURATION_PER_LEVEL ?= 10
 CONCURRENCY_LEVELS ?= 10 20 40 80
 # Locust parameters
 LOCUST_DURATION ?= 60s
-LOCUST_USERS ?= 80
+# Set to 40 for stable local benchmarking
+LOCUST_USERS ?= 40
 LOCUST_SPAWN_RATE ?= 2
 
 # Public targets
@@ -22,9 +23,9 @@ setup:
 
 # Run smoke tests per service in isolation to avoid dependency overlap
 test:
-	uvx --with numpy --with pillow --with requests --with httpx --with fastapi --with uvicorn --with tensorflow==2.15.0 --with keras==2.15.0 --with python-multipart pytest tests/test_smoke_fastapi.py
-	uvx --with numpy --with pillow --with bentoml==1.4.33 --with tensorflow==2.15.0 pytest tests/test_smoke_bentoml.py
-	uvx --with numpy --with pillow --with tensorflow==2.15.0 --with ray --with fastapi --with uvicorn --with python-multipart pytest tests/test_smoke_rayserve.py
+	uvx --python 3.11 --with numpy --with pillow --with requests --with httpx --with "fastapi==0.128.0" --with uvicorn --with tensorflow==2.16.1 --with python-multipart pytest tests/test_smoke_fastapi.py
+	uvx --python 3.11 --with numpy --with pillow --with bentoml==1.4.33 --with tensorflow==2.16.1 pytest tests/test_smoke_bentoml.py
+	uvx --python 3.11 --with numpy --with pillow --with tensorflow==2.16.1 --with "ray[serve]==2.53.0" --with "fastapi==0.128.0" --with uvicorn --with python-multipart pytest tests/test_smoke_rayserve.py
 
 build: test
 	bash "$(SCRIPTS)/build-images.sh"

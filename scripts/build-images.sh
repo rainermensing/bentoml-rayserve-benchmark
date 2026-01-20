@@ -37,7 +37,7 @@ if [ -f "bentoml_service/bentofile.yaml" ] || [ -f "bentoml_service/bentofile.ym
 		# Build the bento inside uvx to ensure isolated deps (Python 3.11 + TensorFlow)
 		# We use the bentofile at bentoml_service/bentofile.yaml but set the build context to root (.)
 		# Set PYTHONPATH to root so bentoml_service is findable as a package
-		BENTO_TAG=$(PYTHONPATH=. uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.15.0 --with numpy --with pillow bentoml build -f "$BENTOFILE" . -o tag 2>/dev/null || true)
+		BENTO_TAG=$(PYTHONPATH=. uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.16.1 --with numpy --with pillow bentoml build -f "$BENTOFILE" . -o tag 2>/dev/null || true)
 		# Strip potential __tag__: prefix
 		BENTO_TAG=${BENTO_TAG#__tag__:}
 		
@@ -50,11 +50,11 @@ if [ -f "bentoml_service/bentofile.yaml" ] || [ -f "bentoml_service/bentofile.ym
 				docker rmi ml-benchmark/bentoml-mobilenet:latest || true
 			fi
 			# Use --opt load to place the built image into the local Docker daemon
-			uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.15.0 --with numpy --with pillow bentoml containerize "$BENTO_TAG" -t ml-benchmark/bentoml-mobilenet:latest --opt load || true
+			uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.16.1 --with numpy --with pillow bentoml containerize "$BENTO_TAG" -t ml-benchmark/bentoml-mobilenet:latest --opt load || true
 		else
 			echo "bentoml build did not produce a tag; attempting fallback build from source"
 			# Try building from source directory as a fallback
-			FALLBACK_TAG=$(uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.15.0 --with numpy --with pillow bentoml build . -o tag 2>/dev/null || true)
+			FALLBACK_TAG=$(uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.16.1 --with numpy --with pillow bentoml build . -o tag 2>/dev/null || true)
 			FALLBACK_TAG=${FALLBACK_TAG#__tag__:}
 			
 			if [ -n "$FALLBACK_TAG" ]; then
@@ -64,7 +64,7 @@ if [ -f "bentoml_service/bentofile.yaml" ] || [ -f "bentoml_service/bentofile.ym
 					echo "Removing existing ml-benchmark/bentoml-mobilenet:latest..."
 					docker rmi ml-benchmark/bentoml-mobilenet:latest || true
 				fi
-				uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.15.0 --with numpy --with pillow bentoml containerize "$FALLBACK_TAG" -t ml-benchmark/bentoml-mobilenet:latest --opt load || true
+				uvx --python 3.11 --with bentoml==1.4.33 --with tensorflow==2.16.1 --with numpy --with pillow bentoml containerize "$FALLBACK_TAG" -t ml-benchmark/bentoml-mobilenet:latest --opt load || true
 			else
 				echo "Fallback build also failed; skipping containerize"
 			fi
@@ -84,7 +84,7 @@ build_if_exists "fastapi-mobilenet" "fastapi/Dockerfile" "."
 if [ -f "rayserve/app.py" ]; then
     echo "Generating Ray Serve config..."
     # We use uv run to ensure we have the correct ray version and dependencies to import app.py
-    uv run --with "ray[serve]==2.6.0" --with "fastapi" --with "tensorflow==2.15.0" --with "pydantic<2.0.0" --with "numpy" --with "Pillow" --with "python-multipart" -- bash -c "cd rayserve && serve build app:graph -o serve_config.yaml" || echo "Warning: Failed to generate serve_config.yaml, using existing one if present."
+    uv run --python 3.11 --with "ray[serve]==2.53.0" --with "fastapi==0.128.0" --with "tensorflow==2.16.1" --with "pydantic>=2.0.0" --with "numpy" --with "Pillow" --with "python-multipart" -- bash -c "cd rayserve && serve build app:graph -o serve_config.yaml" || echo "Warning: Failed to generate serve_config.yaml, using existing one if present."
 fi
 build_if_exists "rayserve-mobilenet" "rayserve/Dockerfile" "."
 

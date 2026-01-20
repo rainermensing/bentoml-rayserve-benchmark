@@ -6,3 +6,5 @@ include:
   - "model/imagenet_labels.txt"
 python:
   requirements_txt: "./bentoml_service/requirements.txt"
+docker:
+  python_version: "3.11"
