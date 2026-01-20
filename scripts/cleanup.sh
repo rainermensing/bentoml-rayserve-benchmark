@@ -11,10 +11,13 @@ echo "=========================================="
 echo "Cleaning Up Resources"
 echo "=========================================="
 
-# Delete Kind cluster
+# Delete Kind clusters
 echo ""
-echo "Deleting Kind cluster..."
-kind delete cluster --name ml-benchmark 2>/dev/null || echo "No cluster to delete"
+echo "Deleting Kind clusters..."
+kind delete cluster --name ml-benchmark 2>/dev/null || true
+kind delete cluster --name ml-benchmark-bentoml 2>/dev/null || true
+kind delete cluster --name ml-benchmark-fastapi 2>/dev/null || true
+kind delete cluster --name ml-benchmark-rayserve 2>/dev/null || true
 
 # Remove Docker images (optional)
 read -p "Remove Docker images? (y/N) " -n 1 -r

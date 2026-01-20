@@ -1,4 +1,7 @@
 #!/bin/bash
+# Locust Load Test Script
+# Runs Locust tests against BentoML, FastAPI, and Ray Serve services using sequential clusters
+
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,51 +14,71 @@ mkdir -p "$DATA_DIR"
 DURATION=${1:-"30s"}
 USERS=${2:-"10"}
 SPAWN_RATE=${3:-"2"}
+REPLICAS=${4:-1}
 
-DEPLOYMENTS=("bentoml-mobilenet" "fastapi-mobilenet" "rayserve-mobilenet")
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+BOLD='\033[1m'
 
-cleanup() {
-    echo "🧹 Cleaning up..."
-    pkill -f "kubectl port-forward.*ml-benchmark" || true
+print_header() {
+    echo ""
+    echo -e "${BLUE}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BOLD}$1${NC}"
+    echo -e "${BLUE}══════════════════════════════════════════════════════════════${NC}"
 }
-trap cleanup EXIT
 
-scale_cluster() {
-    local TARGET=$1
-    echo "⚖️  Isolating resources for $TARGET..."
-    
-    for DEPLOYMENT in "${DEPLOYMENTS[@]}"; do
-        if [ "$DEPLOYMENT" == "$TARGET" ]; then
-            kubectl scale deployment "$DEPLOYMENT" -n ml-benchmark --replicas=1 >/dev/null
-        else
-            kubectl scale deployment "$DEPLOYMENT" -n ml-benchmark --replicas=0 >/dev/null
-        fi
-    done
-
-    echo "⏳ Waiting for $TARGET to be ready..."
-    kubectl wait --for=condition=available deployment/"$TARGET" -n ml-benchmark --timeout=120s >/dev/null
-    echo "✓ $TARGET is ready."
+print_subheader() {
+    echo ""
+    echo -e "${CYAN}── $1 ──${NC}"
 }
 
 run_test_cycle() {
-    local NAME=$1
-    local DEPLOYMENT=$2
-    local LOCAL_PORT=$3
-    local TARGET_PORT=$4
-    local URL="http://localhost:$LOCAL_PORT"
+    local SVC=$1
+    local NAME=$2
+    local PORT=$3
+    local SVC_PORT=$4
+    local HEALTH_PATH=$5
+    local URL="http://localhost:$PORT"
     
     local REPORT_BASE="$DATA_DIR/${NAME}"
     local HTML_REPORT="${REPORT_BASE}_report.html"
     local CSV_PREFIX="${REPORT_BASE}_stats"
 
-    scale_cluster "$DEPLOYMENT"
+    print_header "🏗️  Service: $NAME"
+    "$PROJECT_DIR/scripts/manage-service-cluster.sh" up "$SVC" "$REPLICAS"
 
-    echo "🔌 Starting port forwarding for $NAME ($LOCAL_PORT:$TARGET_PORT)..."
-    kubectl port-forward "svc/$DEPLOYMENT" -n ml-benchmark "$LOCAL_PORT:$TARGET_PORT" &>/dev/null &
-    local PF_PID=$!
+    # Health check
+    echo -n "🔌 Waiting for $NAME health check..."
+    local RETRIES=0
+    local MAX_RETRIES=20
+    local HEALTH_OK=false
     
-    # Give port-forward a moment to establish
+    # Need port-forward for health check
+    kubectl port-forward svc/$SVC-mobilenet -n ml-benchmark $PORT:$SVC_PORT &>/dev/null &
+    local PF_PID=$!
     sleep 2
+
+    while [ $RETRIES -lt $MAX_RETRIES ]; do
+        if curl -s --max-time 2 "${URL}${HEALTH_PATH}" > /dev/null 2>&1; then
+            HEALTH_OK=true
+            break
+        fi
+        echo -n "."
+        sleep 5
+        RETRIES=$((RETRIES + 1))
+    done
+
+    if [ "$HEALTH_OK" != true ]; then
+        echo -e "${RED}FAILED${NC}"
+        kill $PF_PID 2>/dev/null || true
+        "$PROJECT_DIR/scripts/manage-service-cluster.sh" down "$SVC"
+        return 1
+    fi
+    echo -e "${GREEN}OK${NC}"
 
     echo "🚀 Running Locust for $NAME against $URL..."
     uvx --with numpy --with Pillow locust \
@@ -71,18 +94,27 @@ run_test_cycle() {
     
     echo "✓ $NAME test complete."
     
-    # Kill the specific port forward
     kill "$PF_PID" 2>/dev/null || true
+    "$PROJECT_DIR/scripts/manage-service-cluster.sh" down "$SVC"
 }
 
-# Run tests sequentially with isolation
-run_test_cycle "BentoML" "bentoml-mobilenet" "3000" "3000"
-run_test_cycle "FastAPI" "fastapi-mobilenet" "8000" "8000"
-run_test_cycle "RayServe" "rayserve-mobilenet" "31800" "8000"
+# Main execution
+print_header "🚀 Locust Load Test - Sequential Cluster Mode"
+echo "  Duration:   $DURATION"
+echo "  Users:      $USERS"
+echo "  Spawn Rate: $SPAWN_RATE"
+echo "  Replicas:   $REPLICAS"
 
-echo "📊 Generating Locust comparison report with charts..."
-uvx --with matplotlib --with numpy python3 "$SCRIPT_DIR/compare_locust.py" "$DATA_DIR" "$REPORT_DIR"
+# Clear old results
+rm -f "$DATA_DIR"/*_stats*
+
+# Run tests sequentially
+run_test_cycle "bentoml" "BentoML" "3000" "3000" "/healthz"
+run_test_cycle "fastapi" "FastAPI" "8000" "8000" "/health"
+run_test_cycle "rayserve" "RayServe" "31800" "8000" "/health"
+
+# Run data processing
+"$SCRIPT_DIR/process-locust-results.sh"
 
 echo ""
-echo "✅ All Locust tests complete. Report is in $REPORT_DIR (Data in $DATA_DIR)"
-echo "   Note: Other services were scaled to 0 during each test to ensure resource isolation."
+echo "✅ All Locust tests complete."

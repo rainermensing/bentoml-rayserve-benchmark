@@ -43,32 +43,14 @@ echo ""
 echo "Step 3: Building Docker images..."
 "$SCRIPT_DIR/build-images.sh"
 
-# Step 4: Deploy to Kubernetes
-echo ""
-echo "Step 4: Deploying to Kubernetes..."
-"$SCRIPT_DIR/deploy-k8s.sh"
-
-# Step 5: Wait for pods
-echo ""
-echo "Step 5: Waiting for pods to be ready..."
-#kubectl wait --for=condition=ready pod -l app=locust -n ml-benchmark --timeout=120s || true
-kubectl wait --for=condition=ready pod -l app=bentoml-mobilenet -n ml-benchmark --timeout=300s || true
-kubectl wait --for=condition=ready pod -l app=fastapi-mobilenet -n ml-benchmark --timeout=300s || true
-kubectl wait --for=condition=ready pod -l app=rayserve-mobilenet -n ml-benchmark --timeout=300s || true
-
 # Show status
 echo ""
 echo "=========================================="
 echo "Setup Complete!"
 echo "=========================================="
 echo ""
-kubectl get pods -n ml-benchmark
+echo "Docker images have been built. To run the benchmark (which manages its own clusters):"
+echo "  make loadtest"
 echo ""
-echo "Services available at:"
-echo "  - BentoML:   http://localhost:3000"
-echo "  - FastAPI:   http://localhost:8000"
-echo "  - Ray Serve: http://localhost:31800"
-echo "  - Locust UI: http://localhost:8089"
-echo ""
-echo "To run load tests, open http://localhost:8089 in your browser"
-echo "Or run: ./scripts/automated-loadtest.sh"
+echo "To deploy a specific service for manual testing:"
+echo "  ./scripts/deploy-k8s.sh bentoml"
