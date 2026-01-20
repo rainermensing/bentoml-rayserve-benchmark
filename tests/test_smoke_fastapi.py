@@ -31,8 +31,8 @@ def test_fastapi_smoke_local():
         assert resp.status_code == 200
 
         image_bytes = generate_image_bytes()
-        # Upload as a list of files
-        files = [('files', ('test.jpg', image_bytes, 'image/jpeg'))]
+        # Upload as a single file
+        files = {'file': ('test.jpg', image_bytes, 'image/jpeg')}
         
         resp = client.post("/predict", files=files)
         assert resp.status_code == 200, resp.text

@@ -6,140 +6,77 @@
 - **Kind** (Kubernetes in Docker): `brew install kind`
 - **kubectl**: `brew install kubectl`
 - **uv** (fast Python package manager): `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- **Python 3.10+
+- **Python 3.11**
 
 ## Quick Start
+
+The benchmark uses **Sequential Cluster Mode**, where each service is tested in its own isolated Kind cluster.
 
 ### Option 1: One-liners (Makefile)
 
 ```bash
-make setup     # download model, build images, create Kind cluster, deploy
-make loadtest  # run automated load test and emit Markdown report to report/generic
-make locust    # alternatively, run a loadtest with locust and generate a report/locust
-make cleanup   # tear everything down
+make setup            # Prepare environment and download model
+make build            # Build images and run smoke tests
+make locust           # Run Locust load test (sequential clusters)
+make loadtest         # Run generic concurrency sweep (sequential clusters)
+make process-locust   # Generate consolidated Locust reports
+make cleanup          # Tear everything down
 ```
 
 ### Option 2: Scripted (fine-grained)
 
 ```bash
-# 1) Download model
-python model/download_model.py
+# 1) Prepare
+make setup
 
-# 2) Build all images (BentoML 1.4.33, Ray Serve 2.53.0)
+# 2) Build
 ./scripts/build-images.sh
 
-# 3) Deploy to Kind
-./scripts/deploy-k8s.sh
-
-# 4) Run load test (curl-based, writes Markdown to reports/generic/loadtest_report.md)
-./scripts/automated-loadtest.sh
+# 3) Run tests (Duration 50s, 100 users)
+./scripts/locust/run-locust-tests.sh 50s 100 3 2
 ```
 
 ## Accessing Services
 
-After deployment, services are available at:
+During a test run, the active service is port-forwarded to:
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| BentoML | http://localhost:3000 | MobileNetV2 classifier (BentoML) |
-| FastAPI | http://localhost:8000 | MobileNetV2 classifier (FastAPI) |
-| Ray Serve | http://localhost:31800 | MobileNetV2 classifier (Ray Serve + FastAPI ingress) |
-| Locust UI | http://localhost:8089 | Load testing web interface |
+| Service | Local URL | Port |
+|---------|-----------|------|
+| BentoML | http://localhost:3000 | 3000 |
+| FastAPI | http://localhost:8000 | 8000 |
+| Ray Serve | http://localhost:31800 | 31800 |
 
 ## API Endpoints
 
 All services expose identical APIs for fair comparison:
 
-### Predict Endpoint
+### Predict Endpoint (Multipart Form Data)
+
+The benchmark uses image uploads for `/predict`.
 
 ```bash
-# POST /predict
+# Example manual request
 curl -X POST http://localhost:3000/predict \
-  -H "Content-Type: application/json" \
-  -d '{"image_base64": "<base64-encoded-image>"}'
+  -F "files=@/path/to/image.jpg"
 ```
-
-Response:
-```json
-{
-  "predictions": [    {"class_id": 281, "class_name": "tabby cat", "confidence": 0.85}
-  ],
-  "top_prediction": "tabby cat",
-  "confidence": 0.85
-}
-```
-
-### Health Endpoint
-
-```bash
-# GET /health
-curl http://localhost:3000/health
-```
-
-## Load Test Configuration (automated CLI)
-
-- Script: `scripts/automated-loadtest.sh`
-- Defaults: 10s per level; concurrencies `1 5 10 20`
-- Uses generated base64 JPEG payloads; direct `curl` POSTs to `/predict`
-- Outputs raw results to `tmp/loadtest_*.txt` and a Markdown summary to `reports/generic/loadtest_report.md`
-- Override via env: `DURATION_PER_LEVEL=5 CONCURRENCY_LEVELS="1 5 10" ./scripts/automated-loadtest.sh`
-
-Locust UI remains available at http://localhost:8089 if you prefer browser-driven tests (see locust_service/locustfile.py).
-
-## Metrics Collected
-
-| Metric | Description |
-|--------|-------------|
-| RPS | Requests per second |
-| Response Time (p50/p95/p99) | Latency percentiles |
-| Error Rate | Percentage of failed requests |
-| Throughput | Total requests handled |
-
-## Cleanup
-
-Remove all resources:
-
-```bash
-./scripts/cleanup.sh
-```
-
-This removes:
-- Kind cluster
-- Docker images
-- Virtual environment
 
 ## Troubleshooting
 
-### Pods in CrashLoopBackOff
+### Resource Exhaustion
+If tests fail with timeouts or connection errors, ensure Docker Desktop has enough memory and CPU (8GB RAM / 4 CPUs recommended). Sequential cluster mode helps isolate services, but the load generator and Kind still share host resources.
 
-Check pod logs:
+### Cluster Cleanup
+If a test is interrupted, clusters might remain. Use `make cleanup` to remove all benchmark-related Kind clusters:
+- `ml-benchmark-bentoml`
+- `ml-benchmark-fastapi`
+- `ml-benchmark-rayserve`
+
+### Pods not starting
+Check pod logs in the active cluster:
 ```bash
-kubectl logs -n ml-benchmark -l app=bentoml-mobilenet
-kubectl logs -n ml-benchmark -l app=fastapi-mobilenet
+kubectl logs -f deployment/bentoml-mobilenet -n ml-benchmark
 ```
 
-### Model Loading Errors
+### Model loading
+Ensure `model/mobilenet_v2.keras` exists. If not, run `make setup`.
 
-Ensure the model was saved with compatible TensorFlow/Keras versions:
-```bash
-# Rebuild model with pinned versions
-uv pip install tensorflow==2.15.0
-python model/download_model.py
-```
-
-### Port Already in Use
-
-Check for existing processes:
-```bash
-lsof -i :3000
-lsof -i :8000
-lsof -i :8089
-```
-
-### Kind Cluster Issues
-
-Delete and recreate:
-```bash
-kind delete cluster --name ml-benchmark
-./scripts/deploy-k8s.sh
-```

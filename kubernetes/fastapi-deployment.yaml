@@ -19,9 +19,11 @@ spec:
         - name: fastapi
           image: ml-benchmark/fastapi-mobilenet:latest
           imagePullPolicy: Never  # Use local image
-          ports:
-            - containerPort: 8000
-              name: http
+          env:
+            - name: TF_NUM_INTRAOP_THREADS
+              value: "1"
+            - name: TF_NUM_INTEROP_THREADS
+              value: "1"
           resources:
             requests:
               cpu: "250m"

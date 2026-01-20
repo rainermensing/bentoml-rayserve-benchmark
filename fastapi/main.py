@@ -65,42 +65,32 @@ def health() -> Dict[str, str]:
 
 
 @app.post("/predict")
-async def predict(files: List[UploadFile] = File(...)) -> Any:
+async def predict(file: UploadFile = File(...)) -> Any:
     model = getattr(app.state, "model", None)
     if model is None:
-        # Re-raise original exception for clearer test errors
         raise HTTPException(status_code=500, detail=f"Model not loaded: {getattr(app.state, '_model_load_exception', None)}")
 
-    image_bytes_list: List[bytes] = []
-    for file in files:
-        content = await file.read()
-        image_bytes_list.append(content)
+    content = await file.read()
+    input_tensor = preprocess_image(content)
+    
+    # Simple single prediction
+    preds = model.predict(input_tensor, verbose=0)
+    pred = preds[0]
 
-    batch_tensor = np.vstack([preprocess_image(img) for img in image_bytes_list])
-    preds = model.predict(batch_tensor, verbose=0)
-
-    responses: List[Dict[str, Any]] = []
-    for pred in preds:
-        top_indices = np.argsort(pred)[-5:][::-1]
-        results = []
-        for idx in top_indices:
-            results.append(
-                {
-                    "class_id": int(idx),
-                    "class_name": IMAGENET_LABELS[idx] if idx < len(IMAGENET_LABELS) else f"class_{idx}",
-                    "confidence": float(pred[idx]),
-                }
-            )
-        responses.append(
+    top_indices = np.argsort(pred)[-5:][::-1]
+    results = []
+    for idx in top_indices:
+        results.append(
             {
-                "predictions": results,
-                "top_prediction": results[0]["class_name"],
-                "confidence": results[0]["confidence"],
+                "class_id": int(idx),
+                "class_name": IMAGENET_LABELS[idx] if idx < len(IMAGENET_LABELS) else f"class_{idx}",
+                "confidence": float(pred[idx]),
             }
         )
-
-    # If single file was uploaded, return single object?
-    # Usually consistent return type is better.
-    # But previous implementation handled single/list input.
-    # With UploadFile list, let's return a list to be safe and consistent with BentoML batching.
-    return responses
+    
+    # Return as a list with one item to match the response shape of the other services
+    return [{
+        "predictions": results,
+        "top_prediction": results[0]["class_name"],
+        "confidence": results[0]["confidence"],
+    }]

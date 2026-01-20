@@ -122,9 +122,15 @@ run_load_test() {
 #!/bin/bash
 URL=$1
 IMAGE_PATH=$2
+SVC_ID=$3
+FIELD_NAME="files"
+if [ "$SVC_ID" = "fastapi" ]; then
+    FIELD_NAME="file"
+fi
+
 START=$(python3 -c "import time; print(time.time())")
 RESPONSE=$(curl -s -w "\n%{http_code}" --connect-timeout 2 --max-time 8 -X POST "$URL/predict" \
-    -F "files=@$IMAGE_PATH" 2>/dev/null)
+    -F "$FIELD_NAME=@$IMAGE_PATH" 2>/dev/null)
 END=$(python3 -c "import time; print(time.time())")
 HTTP_CODE=$(echo "$RESPONSE" | tail -1)
 DURATION=$(python3 -c "print(round(($END - $START) * 1000, 2))")
@@ -145,7 +151,7 @@ REQSCRIPT
     for i in $(seq 1 $CONCURRENT); do
         (
             while [ $(date +%s) -lt $END_AT ]; do
-                "$TMP_DIR/run_request.sh" "$SERVICE_URL" "$IMAGE_PATH" >> "$RESULTS_FILE"
+                "$TMP_DIR/run_request.sh" "$SERVICE_URL" "$IMAGE_PATH" "$SERVICE_ID" >> "$RESULTS_FILE"
             done
         ) & 
         WORKER_PIDS+=($!)

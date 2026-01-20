@@ -10,10 +10,10 @@ CONCURRENCY_LEVELS ?= 10 20 40 80
 REPLICAS ?= 2
 SERVICE ?= all
 # Locust parameters
-LOCUST_DURATION ?= 60s
+LOCUST_DURATION ?= 50s
 # Set to 40 for stable local benchmarking
-LOCUST_USERS ?= 80
-LOCUST_SPAWN_RATE ?= 2
+LOCUST_USERS ?= 100
+LOCUST_SPAWN_RATE ?= 3
 
 # Public targets
 .PHONY: benchmark setup build deploy loadtest process locust cleanup test

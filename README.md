@@ -30,7 +30,7 @@ make locust    # Run Locust load test
 ├── Makefile                     # Shortcut targets
 ├── kind-config.yaml             # Kind cluster configuration
 ├── model/                       # Model download scripts
-├── bentoml/                     # BentoML service definition
+├── bentoml_service/             # BentoML service definition
 ├── fastapi/                     # FastAPI service definition
 ├── rayserve/                    # Ray Serve service definition
 ├── kubernetes/                  # K8s manifests
@@ -42,6 +42,13 @@ make locust    # Run Locust load test
 ## Benchmark Results
 
 The following results were generated using **Locust** on a local Kind cluster (see [reports/locust/locust_comparison.md](reports/locust/locust_comparison.md) for the full report).
+
+### 📋 Test Parameters
+- **Duration:** 50s
+- **Total Users:** 100
+- **Spawn Rate:** 3 users/s
+- **Service Replicas:** 2
+- **Model:** MobileNetV2 (TensorFlow)
 
 ### 🏆 Executive Summary
 **Winner:** **BentoML** demonstrated the highest throughput and lowest latency in this specific configuration.
@@ -58,11 +65,26 @@ The following results were generated using **Locust** on a local Kind cluster (s
 
 | Metric | BentoML | FastAPI | Ray Serve | Winner |
 | :--- | :--- | :--- | :--- | :--- |
-| **Throughput (req/s)** | **44.50** | 23.26 | 34.93 | **BentoML** |
-| **Avg Latency (ms)** | **891.35** | 1942.87 | 1199.53 | **BentoML** |
-| **P50 Latency (ms)** | **1000.00** | 2000.00 | 1400.00 | **BentoML** |
-| **P95 Latency (ms)** | **1500.00** | 3100.00 | 1900.00 | **BentoML** |
-| **Total Requests** | **2628** | 1359 | 2063 | **BentoML** |
+| **Throughput (req/s)** | **48.28** | 23.30 | 35.87 | **BentoML** |
+| **Avg Latency (ms)** | **1058.71** | 1843.00 | 1514.13 | **BentoML** |
+| **P50 Latency (ms)** | **1200.00** | 1500.00 | 1600.00 | **BentoML** |
+| **P95 Latency (ms)** | **1700.00** | 3100.00 | 2400.00 | **BentoML** |
+| **Total Requests** | **2375** | 1129 | 1758 | **BentoML** |
+
+### 🐢 Generic Load Test (Step-based Concurrency)
+This test uses a custom script to measure performance across different concurrency levels (10 to 80).
+
+**Parameters:**
+- **Duration per level:** 10s
+- **Concurrency levels:** 10, 20, 40, 80
+- **Service Replicas:** 2
+
+| Concurrency | BentoML (req/s) | FastAPI (req/s) | Ray Serve (req/s) | Winner |
+| :--- | :--- | :--- | :--- | :--- |
+| 10 | **21.40** | 17.30 | 18.30 | **BentoML** |
+| 20 | **24.80** | 17.90 | 22.30 | **BentoML** |
+| 40 | **24.80** | 17.50 | 23.10 | **BentoML** |
+| 80 | **22.00** | 16.50 | 20.20 | **BentoML** |
 
 *Note: Results may vary based on hardware and background processes.*
 
@@ -72,7 +94,7 @@ It is important to interpret these results within the context of a local develop
 
 1.  **Resource Contention (Shared Host):**
     *   **Client-Server Contention:** Although tests run **sequentially**, the load generator (Locust) and the active service (in Kind) run on the *same physical machine*. The CPU cycles used to generate load directly compete with the CPU cycles needed to serve requests.
-    *   **Idle Overhead:** Even when testing one service, the other two services remain running in the background (idle), consuming memory and causing context switching overhead.
+    *   **Isolated Environments:** To minimize interference, the benchmark now uses **Sequential Cluster Mode**, where each service is deployed into its own dedicated Kind cluster which is destroyed before the next service is tested. This ensures that memory and CPU are not shared with idle services.
 
 2.  **Network Loopback:**
     *   Traffic does not traverse a real network interface. Latency numbers exclude real-world RTT (Round Trip Time), packet loss, and jitter found in production networks.

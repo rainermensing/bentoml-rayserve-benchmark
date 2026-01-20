@@ -14,6 +14,11 @@ build_if_exists() {
 	local context="$3"
 	if [ -f "$dockerfile" ]; then
 		echo "Building image ml-benchmark/${name}:latest from ${dockerfile}"
+		# Remove existing image to prevent dangling <none> images
+		if docker image inspect "ml-benchmark/${name}:latest" >/dev/null 2>&1; then
+			echo "Removing existing ml-benchmark/${name}:latest..."
+			docker rmi "ml-benchmark/${name}:latest" || true
+		fi
 		docker build -t "ml-benchmark/${name}:latest" -f "$dockerfile" $context
 	else
 		echo "Skipping ${name}: ${dockerfile} not found"
@@ -90,5 +95,8 @@ build_if_exists "rayserve-mobilenet" "rayserve/Dockerfile" "."
 
 # Locust service image
 #build_if_exists "locust-service" "locust_service/Dockerfile" "."
+
+echo "Cleaning up dangling images..."
+docker image prune -f
 
 echo "Docker image build step complete"

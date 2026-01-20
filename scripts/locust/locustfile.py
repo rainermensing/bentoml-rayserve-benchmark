@@ -17,8 +17,13 @@ class MLServiceUser(HttpUser):
 
     @task
     def predict(self):
+        # Determine field name based on host (port 8000 is FastAPI in our setup)
+        field_name = "files"
+        if ":8000" in self.host:
+            field_name = "file"
+            
         files = {
-            'files': ('test_image.jpg', self.image_content, 'image/jpeg')
+            field_name: ('test_image.jpg', self.image_content, 'image/jpeg')
         }
         self.client.post("/predict", files=files)
 
