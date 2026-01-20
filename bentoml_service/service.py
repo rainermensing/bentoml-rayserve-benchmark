@@ -55,7 +55,7 @@ class MobileNetV2Classifier:
         batchable=True,
         batch_dim=0,
         max_batch_size=8,
-        #max_latency_ms=500, default 60000
+        max_latency_ms=60000, # default 60000
     )
     def predict(self, files: list[Image.Image]) -> list[dict[str, t.Any]]:
         """Predict image class from a batch of images.

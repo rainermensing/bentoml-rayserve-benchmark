@@ -74,6 +74,14 @@ fastapi_app = FastAPI(
     version="1.0.0",
 )
 
+def _count_images(requests: list[list[bytes]]) -> int:
+    """Calculate the total number of images in a batch of requests.
+    
+    Used by Ray Serve to ensure the 'max_batch_size' limit is applied to the
+    total number of images (tensor batch size), not just the number of HTTP requests.
+    """
+    return sum(len(req) for req in requests)
+
 
 @serve.deployment(
     num_replicas=NUM_REPLICAS,
@@ -100,7 +108,7 @@ class MobileNetV2Deployment:
     async def health(self) -> HealthResponse:
         return HealthResponse(status="healthy", service="rayserve-mobilenetv2")
 
-    @serve.batch(max_batch_size=8, batch_wait_timeout_s=0.01)
+    @serve.batch(max_batch_size=8, batch_wait_timeout_s=0.01, batch_size_fn=_count_images)
     async def _batched_predict(self, requests: list[list[bytes]]) -> list[list[PredictResponse]]:
         """Batch incoming requests to share one model.predict call.
         
